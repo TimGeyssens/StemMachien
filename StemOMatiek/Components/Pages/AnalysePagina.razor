@@ -1,0 +1,271 @@
+@page "/analyse"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject AnalyseService AnalyseService
+@inject AiService AiService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Stem-O-Matiek — De Waerheydsmachien</PageTitle>
+
+<MudText Typo="Typo.h3" Class="stematiek-title mb-2">
+    <span class="gear-spin">⚙</span> De Waerheydsmachien <span class="gear-spin">⚙</span>
+</MudText>
+<MudText Typo="Typo.h6" Class="stematiek-subtitle mb-6">
+    Hier toetst de machien de beslissingen der regeering aen de beloften der partijen.
+</MudText>
+
+@if (!AiService.IsConfigured)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+        <strong>Opgelet!</strong> De Gemini sleutel is niet geconfigureerd.
+        Herlaed de pagina om de Sleutelmeester te openen, of ga naer <MudLink Href="/instellingen" Style="color: white; text-decoration: underline;">Instellingen</MudLink>.
+    </MudAlert>
+}
+
+@if (!_beslissingen.Any())
+{
+    <MudPaper Class="pa-6 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="color: var(--koper);" />
+        <MudText Typo="Typo.h6" Class="stematiek-title mt-3">Geene Decreten Gevonden!</MudText>
+        <MudText Typo="Typo.body1" Class="mt-2 mb-4">
+            De machien kan niets analyseeren zolang er geene beslissingen in het Decretenlogboeck staen.
+            Voeg eerst eene beslissing toe!
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/beslissingen"
+                   StartIcon="@Icons.Material.Filled.Add">
+            Naer het Decretenlogboeck
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Kies een Decreet</MudText>
+            <MudSelect T="int" Value="_selectedBeslissingId" ValueChanged="OnBeslissingSelected"
+                       Label="Beslissing" Variant="Variant.Outlined" Class="mb-3">
+                @foreach (var b in _beslissingen)
+                {
+                    <MudSelectItem T="int" Value="@b.Id">@b.Titel (@b.Datum.ToString("dd MMM yyyy"))</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (_selectedBeslissing is not null)
+            {
+                <MudText Typo="Typo.body1" Class="mb-2">@_selectedBeslissing.Beschrijving</MudText>
+                <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                    Status: @_selectedBeslissing.Status | Datum: @_selectedBeslissing.Datum.ToString("dd MMMM yyyy")
+                </MudText>
+
+                @if (_analyses.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                        Er bestaan reeds @_analyses.Count analyse(s) voor dit decreet.
+                    </MudAlert>
+                }
+            }
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-4" FullWidth="true"
+                       OnClick="StartAnalyse" Disabled="@(_selectedBeslissingId == 0 || _isAnalysing || !AiService.IsConfigured)">
+                @if (_isAnalysing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>De machien analyseert... (@_analyseVoortgang / @_analyseTotaal)</span>
+                }
+                else
+                {
+                    <span>✦ Laet de Machien Analyseeren ✦</span>
+                }
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Status der Perkamenten</MudText>
+            @foreach (var partij in _partijen)
+            {
+                var hasDoc = _geindexeerdePartijen.Contains(partij.Id);
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudAvatar Size="Size.Small" Style="@($"background-color: {partij.Kleur};")">
+                        @partij.Afkorting[..Math.Min(2, partij.Afkorting.Length)]
+                    </MudAvatar>
+                    <MudText>@partij.Afkorting</MudText>
+                    @if (hasDoc)
+                    {
+                        <MudChip T="string" Size="Size.Small" Class="score-good">✓ Perkament geladen</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Class="score-poor">✗ Geen perkament</MudChip>
+                    }
+                </div>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+}
+
+@if (_analyses.Any())
+{
+    <MudText Typo="Typo.h5" Class="stematiek-title mt-6 mb-3">Resultaeten der Analyse</MudText>
+
+    <MudText Typo="Typo.body1" Class="mb-4" Style="color: var(--koper); font-style: italic;">
+        De machien heeft gesproken! Hieronder vindt gij haer oordeel over elke partij.
+    </MudText>
+
+    @foreach (var analyse in _analyses.OrderByDescending(a => a.OvereenkomstScore))
+    {
+        var partij = _partijen.First(p => p.Id == analyse.PartijId);
+        <AnalyseCard
+            PartijNaam="@partij.Naam"
+            PartijAfkorting="@partij.Afkorting"
+            PartijKleur="@partij.Kleur"
+            AnalyseScore="@analyse.OvereenkomstScore"
+            Samenvatting="@analyse.Samenvatting"
+            Commentaar="@analyse.Commentaar"
+            Datum="@analyse.DatumAnalyse"
+            RelevantePassages="@GetRelevantePassages(analyse)" />
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery] public int? BeslissingId { get; set; }
+
+    private List<Beslissing> _beslissingen = new();
+    private List<Partij> _partijen = new();
+    private HashSet<int> _geindexeerdePartijen = new();
+    private int _selectedBeslissingId;
+    private Beslissing? _selectedBeslissing;
+    private List<Analyse> _analyses = new();
+    private bool _isAnalysing;
+    private int _analyseVoortgang;
+    private int _analyseTotaal;
+    private Dictionary<int, DocumentChunk> _chunkCache = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _beslissingen = await Db.Beslissingen.OrderByDescending(b => b.Datum).ToListAsync();
+        _partijen = await Db.Partijen.OrderByDescending(p => p.Zetels).ToListAsync();
+        _geindexeerdePartijen = (await Db.Documenten
+            .Where(d => d.IsGeindexeerd)
+            .Select(d => d.PartijId)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+
+        if (BeslissingId.HasValue)
+        {
+            _selectedBeslissingId = BeslissingId.Value;
+            await LaadBestaandeAnalyses();
+        }
+    }
+
+    private async Task OnBeslissingSelected(int id)
+    {
+        _selectedBeslissingId = id;
+        _analyses.Clear();
+        _chunkCache.Clear();
+        await LaadBestaandeAnalyses();
+    }
+
+    private async Task LaadBestaandeAnalyses()
+    {
+        _selectedBeslissing = _beslissingen.FirstOrDefault(b => b.Id == _selectedBeslissingId);
+        _analyses = await Db.Analyses
+            .Where(a => a.BeslissingId == _selectedBeslissingId)
+            .ToListAsync();
+
+        // Laad relevante chunks in cache
+        var chunkIds = _analyses
+            .Where(a => !string.IsNullOrEmpty(a.RelevanteChunkIds))
+            .SelectMany(a => a.RelevanteChunkIds!.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            .Select(int.Parse)
+            .Distinct()
+            .ToList();
+
+        if (chunkIds.Any())
+        {
+            _chunkCache = await Db.DocumentChunks
+                .Where(c => chunkIds.Contains(c.Id))
+                .ToDictionaryAsync(c => c.Id);
+        }
+    }
+
+    private async Task StartAnalyse()
+    {
+        if (_selectedBeslissingId == 0) return;
+
+        _isAnalysing = true;
+        _analyses.Clear();
+        _chunkCache.Clear();
+        _selectedBeslissing = _beslissingen.First(b => b.Id == _selectedBeslissingId);
+
+        // Partijen met geïndexeerde documenten
+        var partijen = _partijen.Where(p => _geindexeerdePartijen.Contains(p.Id)).ToList();
+        _analyseTotaal = partijen.Count;
+        _analyseVoortgang = 0;
+        StateHasChanged();
+
+        if (_analyseTotaal == 0)
+        {
+            Snackbar.Add("Er zijn geene partijen met perkamenten. Laed eerst documenten op via De Gildekamers.", Severity.Warning);
+            _isAnalysing = false;
+            return;
+        }
+
+        try
+        {
+            foreach (var partij in partijen)
+            {
+                _analyseVoortgang++;
+                StateHasChanged();
+
+                var analyse = await AnalyseService.AnalyseerVoorPartijAsync(_selectedBeslissingId, partij.Id);
+                if (analyse is not null)
+                    _analyses.Add(analyse);
+            }
+
+            // Laad chunks
+            var chunkIds = _analyses
+                .Where(a => !string.IsNullOrEmpty(a.RelevanteChunkIds))
+                .SelectMany(a => a.RelevanteChunkIds!.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                .Select(int.Parse)
+                .Distinct()
+                .ToList();
+
+            if (chunkIds.Any())
+            {
+                _chunkCache = await Db.DocumentChunks
+                    .Where(c => chunkIds.Contains(c.Id))
+                    .ToDictionaryAsync(c => c.Id);
+            }
+
+            Snackbar.Add($"De machien heeft {_analyses.Count} analyse(s) voltooid!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling in de machien: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isAnalysing = false;
+        }
+    }
+
+    private List<(string? sectie, string tekst)>? GetRelevantePassages(Analyse analyse)
+    {
+        if (string.IsNullOrEmpty(analyse.RelevanteChunkIds)) return null;
+
+        var ids = analyse.RelevanteChunkIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(int.Parse);
+
+        return ids
+            .Where(id => _chunkCache.ContainsKey(id))
+            .Select(id => _chunkCache[id])
+            .Select(c => (c.SectieNaam, c.Inhoud[..Math.Min(300, c.Inhoud.Length)] + (c.Inhoud.Length > 300 ? "..." : "")))
+            .ToList();
+    }
+}

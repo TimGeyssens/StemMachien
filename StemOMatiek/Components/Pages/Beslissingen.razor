@@ -1,0 +1,117 @@
+@page "/beslissingen"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Stem-O-Matiek — Het Decretenlogboeck</PageTitle>
+
+<MudText Typo="Typo.h3" Class="stematiek-title mb-2">⚙ Het Decretenlogboeck ⚙</MudText>
+<MudText Typo="Typo.h6" Class="stematiek-subtitle mb-4">
+    Hierin worden alle voorstellen ende beslissingen der Vlaamsche regeering opgetekend.
+</MudText>
+
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenNieuwDialog" Class="mb-4">
+    + Nieuw Decreet Optekenen
+</MudButton>
+
+@if (_beslissingen.Any())
+{
+    <MudTable Items="@_beslissingen" Hover="true">
+        <HeaderContent>
+            <MudTh>Datum</MudTh>
+            <MudTh>Titel</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Analyses</MudTh>
+            <MudTh>Resultaat</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Datum.ToString("dd MMM yyyy")</MudTd>
+            <MudTd>
+                <MudLink Href="@($"/analyse?beslissingId={context.Id}")" Style="color: var(--goud);">
+                    @context.Titel
+                </MudLink>
+                <br />
+                <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                    @context.Beschrijving[..Math.Min(100, context.Beschrijving.Length)]@(context.Beschrijving.Length > 100 ? "..." : "")
+                </MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Style="@GetStatusStyle(context.Status)">
+                    @context.Status
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                @{
+                    var analyseCount = context.Analyses?.Count ?? 0;
+                }
+                @if (analyseCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Class="score-good">@analyseCount analyse(s)</MudChip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">Nog niet geanalyseerd</MudText>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.Resultaat is not null)
+                {
+                    <BelofteBarometer Score="@context.Resultaat.BelofteBarometerScore" Label="" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Style="color: var(--koper);">—</MudText>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudPaper Class="pa-6 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Large" Style="color: var(--koper);" />
+        <MudText Typo="Typo.h6" Class="stematiek-title mt-2">Het logboeck is nog leeg!</MudText>
+        <MudText Typo="Typo.body1">Teken het eerste decreet op en laet de machien het toetsen.</MudText>
+    </MudPaper>
+}
+
+@code {
+    private List<Beslissing> _beslissingen = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LaadData();
+    }
+
+    private async Task LaadData()
+    {
+        _beslissingen = await Db.Beslissingen
+            .Include(b => b.Analyses)
+            .Include(b => b.Resultaat)
+            .OrderByDescending(b => b.Datum)
+            .ToListAsync();
+    }
+
+    private async Task OpenNieuwDialog()
+    {
+        var dialog = await DialogService.ShowAsync<StemOMatiek.Components.Dialogs.NieuwDecreetDialog>("Nieuw Decreet");
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            Snackbar.Add("Decreet is opgetekend!", Severity.Success);
+            await LaadData();
+        }
+    }
+
+    private string GetStatusStyle(string status) => status switch
+    {
+        "Goedgekeurd" => "color: #40916c; border-color: #40916c;",
+        "Uitgevoerd" => "color: var(--goud); border-color: var(--goud);",
+        "Verworpen" => "color: #bc4749; border-color: #bc4749;",
+        _ => "color: var(--koper); border-color: var(--koper);"
+    };
+}

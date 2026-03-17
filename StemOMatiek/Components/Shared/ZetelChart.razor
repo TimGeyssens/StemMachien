@@ -1,0 +1,35 @@
+@* Zetelverdeling als horizontale gestapelde balk *@
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.caption" Style="color: var(--gold-dim); letter-spacing: 3px;" Class="mb-1">✦ ZETELVERDELING</MudText>
+    <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Vlaemsch Parlement</MudText>
+    <MudText Typo="Typo.caption" Class="mb-2" Style="color: var(--gold); letter-spacing: 2px;">TOTAEL: @Partijen.Sum(p => p.Zetels) ZETELS</MudText>
+
+    <div style="display: flex; width: 100%; border-radius: 12px; overflow: hidden; border: 2px solid rgba(64,224,208,0.2);">
+        @foreach (var partij in Partijen.OrderByDescending(p => p.Zetels))
+        {
+            var percentage = (double)partij.Zetels / Partijen.Sum(p => p.Zetels) * 100;
+            <div class="zetel-bar"
+                 style="width: @(percentage.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%; background-color: @partij.Kleur;"
+                 title="@partij.Afkorting: @partij.Zetels zetels">
+                @if (percentage > 6)
+                {
+                    <span>@partij.Afkorting @partij.Zetels</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="d-flex flex-wrap gap-3 mt-3">
+        @foreach (var partij in Partijen.OrderByDescending(p => p.Zetels))
+        {
+            <MudChip T="string" Style="@($"background-color: {partij.Kleur}; color: white;")" Size="Size.Small">
+                @partij.Afkorting — @partij.Zetels zetels @(partij.InRegering ? "👑" : "")
+            </MudChip>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public List<Partij> Partijen { get; set; } = new();
+}

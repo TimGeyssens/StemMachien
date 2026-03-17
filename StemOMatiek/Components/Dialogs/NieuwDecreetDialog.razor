@@ -1,0 +1,56 @@
+@inject AppDbContext Db
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="stematiek-title">⚙ Nieuw Decreet Optekenen ⚙</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_titel" Label="Titel des Decreets" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_beschrijving" Label="Beschrijving" Variant="Variant.Outlined" Lines="6" Class="mb-3" />
+        <MudDatePicker @bind-Date="_datum" Label="Datum" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_bron" Label="Bron (optioneel)" Variant="Variant.Outlined" Class="mb-3" />
+        <MudSelect @bind-Value="_status" Label="Status" Variant="Variant.Outlined">
+            <MudSelectItem Value="@("Voorgesteld")">Voorgesteld</MudSelectItem>
+            <MudSelectItem Value="@("Goedgekeurd")">Goedgekeurd</MudSelectItem>
+            <MudSelectItem Value="@("Uitgevoerd")">Uitgevoerd</MudSelectItem>
+            <MudSelectItem Value="@("Verworpen")">Verworpen</MudSelectItem>
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Annuleren</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+            Optekenen
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _titel = string.Empty;
+    private string _beschrijving = string.Empty;
+    private DateTime? _datum = DateTime.Today;
+    private string? _bron;
+    private string _status = "Voorgesteld";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_titel) || string.IsNullOrWhiteSpace(_beschrijving)) return;
+
+        var beslissing = new Beslissing
+        {
+            Titel = _titel,
+            Beschrijving = _beschrijving,
+            Datum = _datum?.ToUniversalTime() ?? DateTime.UtcNow,
+            Bron = _bron,
+            Status = _status
+        };
+
+        Db.Beslissingen.Add(beslissing);
+        await Db.SaveChangesAsync();
+
+        MudDialog.Close(DialogResult.Ok(beslissing));
+    }
+}

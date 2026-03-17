@@ -1,0 +1,401 @@
+@page "/partijen"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject DocumentService DocService
+@inject AiService AiService
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Stem-O-Matiek — De Gildekamers</PageTitle>
+
+<MudText Typo="Typo.h3" Class="stematiek-title mb-2">⚙ De Gildekamers ⚙</MudText>
+<MudText Typo="Typo.h6" Class="stematiek-subtitle mb-6">
+    Hier vindt gij alle partijen ende hunne programma's, perkamenten ende beloften.
+</MudText>
+
+@if (_partijen.Any())
+{
+    <ZetelChart Partijen="_partijen" />
+}
+
+<MudTable Items="@_partijen" Hover="true" Class="mt-4">
+    <HeaderContent>
+        <MudTh>Partij</MudTh>
+        <MudTh>Afkorting</MudTh>
+        <MudTh>Zetels</MudTh>
+        <MudTh>Regeering</MudTh>
+        <MudTh>Documenten</MudTh>
+        <MudTh>Acties</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>
+            <div class="d-flex align-center gap-2">
+                <MudAvatar Size="Size.Small" Style="@($"background-color: {context.Kleur};")">
+                    @context.Afkorting[..Math.Min(2, context.Afkorting.Length)]
+                </MudAvatar>
+                @context.Naam
+            </div>
+        </MudTd>
+        <MudTd>@context.Afkorting</MudTd>
+        <MudTd>@context.Zetels</MudTd>
+        <MudTd>
+            @if (context.InRegering)
+            {
+                <MudChip T="string" Size="Size.Small" Style="background-color: var(--goud); color: #1a1a2e;">👑 Ja</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Oppositie</MudChip>
+            }
+        </MudTd>
+        <MudTd>
+            @{
+                var docCount = _documentCounts.GetValueOrDefault(context.Id, 0);
+                var indexedCount = _indexedCounts.GetValueOrDefault(context.Id, 0);
+            }
+            @if (docCount == 0)
+            {
+                <MudChip T="string" Size="Size.Small" Class="score-poor">Geen perkament</MudChip>
+            }
+            else if (indexedCount == docCount)
+            {
+                <MudChip T="string" Size="Size.Small" Class="score-good">@docCount ✓</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Class="score-neutral">@indexedCount / @docCount geïndexeerd</MudChip>
+            }
+        </MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Upload" Size="Size.Small"
+                           OnClick="@(() => OpenDocumentDialog(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                           OnClick="@(() => ToonDocumenten(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@* Document Upload Dialog *@
+@if (_showUploadDialog)
+{
+    <MudDialog @bind-Visible="_showUploadDialog">
+        <TitleContent>
+            <MudText Typo="Typo.h6" Class="stematiek-title">
+                ⚙ Perkament toevoegen voor @_selectedPartij?.Afkorting ⚙
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudTextField @bind-Value="_newDocTitel" Label="Titel des Perkaments" Variant="Variant.Outlined" Class="mb-3" />
+            <MudSelect @bind-Value="_newDocType" Label="Soort Perkament" Variant="Variant.Outlined" Class="mb-3">
+                <MudSelectItem Value="@("Partijprogramma")">Partijprogramma</MudSelectItem>
+                <MudSelectItem Value="@("Verkiezingsbelofte")">Verkiezingsbelofte</MudSelectItem>
+                <MudSelectItem Value="@("Regeerakkoord")">Regeerakkoord</MudSelectItem>
+            </MudSelect>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color: var(--koper);">✦ Laad een bestand op (PDF of TXT)</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                <InputFile OnChange="OnUploadFileSelected" accept=".pdf,.txt" style="max-width: 300px;" />
+                @if (!string.IsNullOrEmpty(_uploadFileName))
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@_uploadFileName</MudChip>
+                }
+            </MudStack>
+
+            <MudDivider Class="mb-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color: var(--koper);">✦ Of plak den tekst hieronder</MudText>
+            <MudTextField @bind-Value="_newDocInhoud" Label="Inhoud (plak den tekst hier)" Variant="Variant.Outlined"
+                          Lines="12" Disabled="@(!string.IsNullOrEmpty(_uploadFileName))" />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => { _showUploadDialog = false; _uploadFileName = null; })">Annuleren</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="VoegDocumentToe" Disabled="_isUploading">
+                @if (_isUploading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Indexeeren...</span>
+                }
+                else
+                {
+                    <span>Toevoegen & Indexeeren</span>
+                }
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@* Document Viewer Dialog *@
+@if (_showDocDialog)
+{
+    <MudDialog @bind-Visible="_showDocDialog" Options="@(new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true })">
+        <TitleContent>
+            <MudText Typo="Typo.h6" Class="stematiek-title">
+                Perkamenten van @_selectedPartij?.Afkorting
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            @if (_partijDocumenten.Any())
+            {
+                @foreach (var doc in _partijDocumenten)
+                {
+                    <MudCard Class="mb-3">
+                        <MudCardContent>
+                            <div class="d-flex justify-space-between align-center">
+                                <MudText Typo="Typo.h6">@doc.Titel</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@doc.Type</MudChip>
+                            </div>
+                            <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                                Toegevoegd: @doc.DatumToegevoegd.ToString("dd MMM yyyy") —
+                                @(doc.IsGeindexeerd ? "✓ Geïndexeerd" : "⏳ Niet geïndexeerd") —
+                                @doc.Chunks.Count chunk(s)
+                            </MudText>
+                            @if (!doc.IsGeindexeerd)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                           Class="mt-2" OnClick="@(() => IndexeerDocument(doc))"
+                                           Disabled="@(!AiService.IsConfigured || _indexingDocId == doc.Id)">
+                                    @if (_indexingDocId == doc.Id)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Indexeeren...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>⚙ Indexeeren</span>
+                                    }
+                                </MudButton>
+                            }
+                            <MudText Typo="Typo.caption" Class="mt-2" Style="color: var(--koper);">
+                                @doc.Inhoud.Length.ToString("N0") tekens
+                            </MudText>
+                            <MudExpansionPanels Class="mt-2">
+                                <MudExpansionPanel Text="Bekijk volledig perkament" Style="color: var(--creme);">
+                                    <pre style="max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem; line-height: 1.5; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">@doc.Inhoud</pre>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            }
+            else
+            {
+                <MudText>Geene perkamenten gevonden voor dees partij.</MudText>
+            }
+        </DialogContent>
+        <DialogActions>
+            @if (_partijDocumenten.Any(d => !d.IsGeindexeerd))
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                           OnClick="IndexeerAlleVoorPartij"
+                           Disabled="@(!AiService.IsConfigured || _indexingDocId.HasValue)">
+                    @if (_indexingAll)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Alles indexeeren...</span>
+                    }
+                    else
+                    {
+                        <span>⚙ Alles Indexeeren</span>
+                    }
+                </MudButton>
+            }
+            <MudButton OnClick="@(() => _showDocDialog = false)">Sluiten</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    private List<Partij> _partijen = new();
+    private Dictionary<int, int> _documentCounts = new();
+    private Partij? _selectedPartij;
+    private bool _showUploadDialog;
+    private bool _showDocDialog;
+    private bool _isUploading;
+    private string _newDocTitel = string.Empty;
+    private string _newDocType = "Partijprogramma";
+    private string _newDocInhoud = string.Empty;
+    private List<Document> _partijDocumenten = new();
+    private string? _uploadFileName;
+    private string? _uploadFileContent;
+    private Dictionary<int, int> _indexedCounts = new();
+    private int? _indexingDocId;
+    private bool _indexingAll;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LaadData();
+    }
+
+    private async Task LaadData()
+    {
+        _partijen = await Db.Partijen.OrderByDescending(p => p.Zetels).ToListAsync();
+        _documentCounts = await Db.Documenten
+            .GroupBy(d => d.PartijId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+        _indexedCounts = await Db.Documenten
+            .Where(d => d.IsGeindexeerd)
+            .GroupBy(d => d.PartijId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
+
+    private void OpenDocumentDialog(Partij partij)
+    {
+        _selectedPartij = partij;
+        _newDocTitel = string.Empty;
+        _newDocInhoud = string.Empty;
+        _newDocType = "Partijprogramma";
+        _uploadFileName = null;
+        _uploadFileContent = null;
+        _showUploadDialog = true;
+    }
+
+    private async Task OnUploadFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            string extractedText;
+
+            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                ms.Position = 0;
+                using var pdfDoc = UglyToad.PdfPig.PdfDocument.Open(ms);
+                var sb = new System.Text.StringBuilder();
+                foreach (var page in pdfDoc.GetPages())
+                    sb.AppendLine(page.Text);
+                extractedText = sb.ToString();
+            }
+            else
+            {
+                using var reader = new StreamReader(stream);
+                extractedText = await reader.ReadToEndAsync();
+            }
+
+            if (string.IsNullOrWhiteSpace(extractedText))
+            {
+                Snackbar.Add("Kon geenen tekst uit het bestand halen. Probeer het als .txt.", Severity.Warning);
+                return;
+            }
+
+            _uploadFileName = file.Name;
+            _uploadFileContent = extractedText;
+            _newDocInhoud = string.Empty; // clear text paste when file selected
+            Snackbar.Add($"Bestand '{file.Name}' geladen ({extractedText.Length:N0} tekens)", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling bij bestand: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task VoegDocumentToe()
+    {
+        var inhoud = !string.IsNullOrEmpty(_uploadFileContent) ? _uploadFileContent : _newDocInhoud;
+        if (_selectedPartij is null || string.IsNullOrWhiteSpace(inhoud)) return;
+
+        _isUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            var titel = !string.IsNullOrWhiteSpace(_newDocTitel)
+                ? _newDocTitel
+                : !string.IsNullOrEmpty(_uploadFileName)
+                    ? $"{_uploadFileName} — {_selectedPartij.Afkorting}"
+                    : $"{_newDocType} {_selectedPartij.Afkorting}";
+
+            var doc = await DocService.VoegDocumentToeAsync(
+                _selectedPartij.Id,
+                titel,
+                inhoud,
+                _newDocType
+            );
+
+            await DocService.IndexeerDocumentAsync(doc.Id);
+
+            Snackbar.Add($"Perkament '{doc.Titel}' is toegevoegd ende geïndexeerd!", Severity.Success);
+            _showUploadDialog = false;
+            _uploadFileName = null;
+            _uploadFileContent = null;
+            await LaadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling bij het indexeeren: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private async Task ToonDocumenten(Partij partij)
+    {
+        _selectedPartij = partij;
+        _partijDocumenten = await Db.Documenten
+            .Include(d => d.Chunks)
+            .Where(d => d.PartijId == partij.Id)
+            .OrderByDescending(d => d.DatumToegevoegd)
+            .ToListAsync();
+        _showDocDialog = true;
+    }
+
+    private async Task IndexeerDocument(Document doc)
+    {
+        _indexingDocId = doc.Id;
+        StateHasChanged();
+
+        try
+        {
+            await DocService.IndexeerDocumentAsync(doc.Id);
+            doc.IsGeindexeerd = true;
+            Snackbar.Add($"Perkament '{doc.Titel}' is geïndexeerd!", Severity.Success);
+            await LaadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling bij het indexeeren: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _indexingDocId = null;
+        }
+    }
+
+    private async Task IndexeerAlleVoorPartij()
+    {
+        _indexingAll = true;
+        StateHasChanged();
+
+        var count = 0;
+        try
+        {
+            foreach (var doc in _partijDocumenten.Where(d => !d.IsGeindexeerd))
+            {
+                _indexingDocId = doc.Id;
+                StateHasChanged();
+
+                await DocService.IndexeerDocumentAsync(doc.Id);
+                doc.IsGeindexeerd = true;
+                count++;
+            }
+
+            Snackbar.Add($"{count} perkament(en) van {_selectedPartij?.Afkorting} geïndexeerd!", Severity.Success);
+            await LaadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling bij het indexeeren: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _indexingDocId = null;
+            _indexingAll = false;
+        }
+    }
+}

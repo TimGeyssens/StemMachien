@@ -1,0 +1,256 @@
+@page "/stellingen"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject DocumentService DocService
+@inject AiService AiService
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Stem-O-Matiek — De Stellingentoets</PageTitle>
+
+<MudText Typo="Typo.h3" Class="stematiek-title mb-2">
+    <span class="gear-spin">⚙</span> De Stellingentoets <span class="gear-spin">⚙</span>
+</MudText>
+<MudText Typo="Typo.h6" Class="stematiek-subtitle mb-6">
+    Toets eene vrije stelling aen de programma's der partijen — zonder decreet, zonder poespas.
+</MudText>
+
+@if (!AiService.IsConfigured)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+        <strong>Opgelet!</strong> De Gemini sleutel is niet geconfigureerd.
+        Herlaed de pagina om de Sleutelmeester te openen, of ga naer <MudLink Href="/instellingen" Style="color: white; text-decoration: underline;">Instellingen</MudLink>.
+    </MudAlert>
+}
+
+<MudGrid>
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Uw Stelling</MudText>
+            <MudTextField @bind-Value="_stelling" Label="Typ hier uwe stelling..."
+                          Variant="Variant.Outlined" Lines="3" Class="mb-3"
+                          Placeholder="bv. 'De kerncentrales moeten openblijven' of 'Er moet meer geld naer het onderwijs'" />
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
+                       OnClick="StartToets" Disabled="@(string.IsNullOrWhiteSpace(_stelling) || _isAnalysing || !AiService.IsConfigured)">
+                @if (_isAnalysing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>De machien toetst... (@_voortgang / @_totaal)</span>
+                }
+                else
+                {
+                    <span>✦ Toets de Stelling ✦</span>
+                }
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Perkamenten Status</MudText>
+            @foreach (var partij in _partijen)
+            {
+                var hasDoc = _partijenMetDoc.Contains(partij.Id);
+                var isIndexed = _geindexeerdePartijen.Contains(partij.Id);
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudAvatar Size="Size.Small" Style="@($"background-color: {partij.Kleur};")">
+                        @partij.Afkorting[..Math.Min(2, partij.Afkorting.Length)]
+                    </MudAvatar>
+                    <MudText>@partij.Afkorting</MudText>
+                    @if (isIndexed)
+                    {
+                        <MudChip T="string" Size="Size.Small" Class="score-good">✓ Gereed</MudChip>
+                    }
+                    else if (hasDoc)
+                    {
+                        <MudChip T="string" Size="Size.Small" Class="score-neutral">⏳ Niet geïndexeerd</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Class="score-poor">✗ Geen perkament</MudChip>
+                    }
+                </div>
+            }
+            @if (_partijenMetDoc.Except(_geindexeerdePartijen).Any())
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true" Class="mt-3"
+                           OnClick="IndexeerAlles" Disabled="@(!AiService.IsConfigured || _isIndexing)">
+                    @if (_isIndexing)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Indexeeren... (@_indexVoortgang / @_indexTotaal)</span>
+                    }
+                    else
+                    {
+                        <span>⚙ Alles Indexeeren</span>
+                    }
+                </MudButton>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_resultaten.Any())
+{
+    <MudText Typo="Typo.h5" Class="stematiek-title mt-6 mb-2">Oordeel der Machien</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4" Style="color: var(--koper); font-style: italic;">
+        „@_getoetsteStelling"
+    </MudText>
+
+    @foreach (var r in _resultaten.OrderByDescending(r => r.resultaat.OvereenkomstScore))
+    {
+        <AnalyseCard
+            PartijNaam="@r.partij.Naam"
+            PartijAfkorting="@r.partij.Afkorting"
+            PartijKleur="@r.partij.Kleur"
+            AnalyseScore="@r.resultaat.OvereenkomstScore"
+            Samenvatting="@r.resultaat.Samenvatting"
+            Commentaar="@r.resultaat.Commentaar"
+            Datum="@DateTime.UtcNow"
+            RelevantePassages="@r.passages" />
+    }
+}
+
+@code {
+    private string _stelling = string.Empty;
+    private string _getoetsteStelling = string.Empty;
+    private List<Partij> _partijen = new();
+    private HashSet<int> _geindexeerdePartijen = new();
+    private HashSet<int> _partijenMetDoc = new();
+    private bool _isAnalysing;
+    private bool _isIndexing;
+    private int _voortgang;
+    private int _totaal;
+    private int _indexVoortgang;
+    private int _indexTotaal;
+    private List<(Partij partij, AnalyseResultaat resultaat, List<(string? sectie, string tekst)> passages)> _resultaten = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _partijen = await Db.Partijen.OrderByDescending(p => p.Zetels).ToListAsync();
+        _partijenMetDoc = (await Db.Documenten
+            .Select(d => d.PartijId)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+        _geindexeerdePartijen = (await Db.Documenten
+            .Where(d => d.IsGeindexeerd)
+            .Select(d => d.PartijId)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+    }
+
+    private async Task StartToets()
+    {
+        if (string.IsNullOrWhiteSpace(_stelling)) return;
+
+        Console.WriteLine($"[Stellingen] StartToets: '{_stelling}'");
+        _isAnalysing = true;
+        _resultaten.Clear();
+        _getoetsteStelling = _stelling;
+
+        var partijen = _partijen.Where(p => _geindexeerdePartijen.Contains(p.Id)).ToList();
+        _totaal = partijen.Count;
+        _voortgang = 0;
+        StateHasChanged();
+
+        Console.WriteLine($"[Stellingen] {_totaal} geïndexeerde partijen gevonden");
+
+        if (_totaal == 0)
+        {
+            Snackbar.Add("Er zijn geene partijen met perkamenten. Laed eerst documenten op via De Gildekamers.", Severity.Warning);
+            _isAnalysing = false;
+            return;
+        }
+
+        try
+        {
+            foreach (var partij in partijen)
+            {
+                _voortgang++;
+                StateHasChanged();
+
+                Console.WriteLine($"[Stellingen] Toetsen: {partij.Afkorting} ({_voortgang}/{_totaal})");
+
+                // Zoek relevante chunks
+                var relevanteChunks = await DocService.ZoekRelevanteChunksAsync(_stelling, partij.Id);
+                Console.WriteLine($"[Stellingen] {relevanteChunks.Count} chunks gevonden voor {partij.Afkorting}");
+
+                var passages = relevanteChunks
+                    .Select(c => c.chunk.Inhoud)
+                    .ToList();
+
+                // AI analyse
+                var resultaat = await AiService.AnalyseerStellingAsync(_stelling, partij.Naam, passages);
+                Console.WriteLine($"[Stellingen] {partij.Afkorting}: score={resultaat.OvereenkomstScore}");
+
+                // Passages voor de kaart
+                var passageDisplay = relevanteChunks
+                    .Select(c => (c.chunk.SectieNaam, c.chunk.Inhoud[..Math.Min(300, c.chunk.Inhoud.Length)] + (c.chunk.Inhoud.Length > 300 ? "..." : "")))
+                    .ToList();
+
+                _resultaten.Add((partij, resultaat, passageDisplay));
+            }
+
+            Snackbar.Add($"De machien heeft {_resultaten.Count} partij(en) getoetst!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Stellingen] FOUT: {ex}");
+            Snackbar.Add($"Dwaling in de machien: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isAnalysing = false;
+        }
+    }
+
+    private async Task IndexeerAlles()
+    {
+        _isIndexing = true;
+        var ongeindexeerd = await Db.Documenten
+            .Where(d => !d.IsGeindexeerd)
+            .ToListAsync();
+        _indexTotaal = ongeindexeerd.Count;
+        _indexVoortgang = 0;
+        StateHasChanged();
+
+        int gelukt = 0;
+        int mislukt = 0;
+
+        foreach (var doc in ongeindexeerd)
+        {
+            _indexVoortgang++;
+            StateHasChanged();
+
+            try
+            {
+                await DocService.IndexeerDocumentAsync(doc.Id);
+                gelukt++;
+
+                // Pauze tussen documenten om rate limits te vermijden
+                if (_indexVoortgang < _indexTotaal)
+                    await Task.Delay(1000);
+            }
+            catch (Exception ex)
+            {
+                mislukt++;
+                Snackbar.Add($"Dwaling bij '{doc.Titel}': {ex.Message}", Severity.Warning);
+            }
+        }
+
+        if (gelukt > 0)
+            Snackbar.Add($"{gelukt} perkament(en) geïndexeerd!", Severity.Success);
+        if (mislukt > 0)
+            Snackbar.Add($"{mislukt} perkament(en) konden niet geïndexeerd worden.", Severity.Warning);
+
+        // Refresh status
+        _partijenMetDoc = (await Db.Documenten
+            .Select(d => d.PartijId).Distinct().ToListAsync()).ToHashSet();
+        _geindexeerdePartijen = (await Db.Documenten
+            .Where(d => d.IsGeindexeerd)
+            .Select(d => d.PartijId).Distinct().ToListAsync()).ToHashSet();
+
+        _isIndexing = false;
+    }
+}

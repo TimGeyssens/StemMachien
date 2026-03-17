@@ -1,0 +1,120 @@
+@inherits LayoutComponentBase
+@inject ApiKeyProvider KeyProvider
+
+<MudThemeProvider Theme="_theme" IsDarkMode="true" />
+
+@if (_showWizard)
+{
+    <Sleutelmeester OnCompleted="WizardVoltooid" />
+}
+
+<div class="crt-frame">
+    <MudLayout>
+        <MudAppBar Fixed="true" Class="stematiek-appbar" Style="flex-wrap: wrap;">
+        <span class="stematiek-title" style="font-size: 1.1rem; letter-spacing: 5px;">✦ Het Analytisch Stem-Machien ✦</span>
+            <MudSpacer />
+            @if (KeyProvider.HasKey)
+            {
+                <MudChip T="string" Size="Size.Small" Class="score-good mr-2">
+                    <span class="crt-indicator crt-indicator-green" style="display:inline-block; width:6px; height:6px;"></span> SLEUTEL ACTIEF
+                </MudChip>
+            }
+            else
+            {
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => _showWizard = true)"
+                           Class="mr-2" Style="color: var(--turquoise); border-color: var(--turquoise-dim);">
+                    SLEUTEL INVOEREN
+                </MudButton>
+            }
+        <MudText Typo="Typo.caption" Style="color: var(--chrome-dim); letter-spacing: 2px;">SERIE NR. A-2024</MudText>
+        </MudAppBar>
+
+        @* ── Top Navigation Bar ── *@
+        <MudAppBar Fixed="false" Class="stematiek-topnav" Style="top: var(--mud-appbar-height);" Dense="true">
+            <NavMenu />
+        </MudAppBar>
+
+        <MudMainContent Class="stematiek-content">
+            <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+
+    <div class="crt-statusbar">
+        <div>
+            <span>✦ Stem-O-Matiek Kontrolepaneel v1.0</span>
+        </div>
+        <div class="d-flex align-center gap-4">
+            <span>
+                <span class="crt-indicator crt-indicator-green"></span> Reactor
+            </span>
+            <span>
+                <span class="crt-indicator @(KeyProvider.HasKey ? "crt-indicator-green" : "crt-indicator-red")"></span> Analysemodule
+            </span>
+            <span>
+                <span class="crt-indicator crt-indicator-amber"></span> Transmissie
+            </span>
+        </div>
+        <div>
+            @DateTime.Now.ToString("HH:mm:ss")
+        </div>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    SYSTEEM DWALING — De machien heeft eene onvoorziene fout ondervonden.
+    <a href="." class="reload">HERLADEN</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _showWizard = true;
+
+    private void WizardVoltooid()
+    {
+        _showWizard = false;
+        StateHasChanged();
+    }
+
+    private static readonly string[] _headingFont = ["Orbitron", "Space Grotesk", "sans-serif"];
+    private static readonly string[] _bodyFont = ["Space Grotesk", "Segoe UI", "sans-serif"];
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#40E0D0",
+            Secondary = "#E8735A",
+            Tertiary = "#FFD700",
+            Background = "#0B1026",
+            Surface = "#111B3A",
+            AppbarBackground = "#111B3A",
+            DrawerBackground = "#111B3A",
+            TextPrimary = "#FFF8E7",
+            TextSecondary = "#C8CCD0"
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#40E0D0",
+            Secondary = "#E8735A",
+            Tertiary = "#FFD700",
+            Background = "#0B1026",
+            Surface = "#111B3A",
+            AppbarBackground = "#111B3A",
+            DrawerBackground = "#111B3A",
+            TextPrimary = "#FFF8E7",
+            TextSecondary = "#C8CCD0"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography { FontFamily = _bodyFont },
+            H1 = new H1Typography { FontFamily = _headingFont },
+            H2 = new H2Typography { FontFamily = _headingFont },
+            H3 = new H3Typography { FontFamily = _headingFont },
+            H4 = new H4Typography { FontFamily = _headingFont },
+            H5 = new H5Typography { FontFamily = _headingFont },
+            H6 = new H6Typography { FontFamily = _headingFont }
+        }
+    };
+}

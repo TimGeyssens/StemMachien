@@ -1,0 +1,95 @@
+@page "/instellingen"
+@rendermode InteractiveServer
+@inject IConfiguration Config
+@inject AiService AiService
+@inject ISnackbar Snackbar
+
+<PageTitle>Stem-O-Matiek — Instellingen</PageTitle>
+
+<MudText Typo="Typo.h3" Class="stematiek-title mb-2">⚙ Instellingen der Machien ⚙</MudText>
+<MudText Typo="Typo.h6" Class="stematiek-subtitle mb-6">
+    Hier configureert gij de werking van de Stem-O-Matiek.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Google Gemini Configuratie</MudText>
+
+            @if (AiService.IsConfigured)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-3">
+                    ✓ De Gemini sleutel is geconfigureerd. De machien is gereed!
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">
+                    ✗ Geene Gemini sleutel gevonden. De analyse-functies zullen niet werken.
+                </MudAlert>
+            }
+
+            <MudText Typo="Typo.body1" Class="mb-4">
+                Om de Waerheydsmachien te doen werken, hebt gij eenen Google Gemini API-sleutel van node.
+                Dees sleutel dient geconfigureerd te worden in <code>appsettings.json</code> of via User Secrets:
+            </MudText>
+
+            <MudPaper Class="pa-3 mb-4" Style="background: rgba(0,0,0,0.3); font-family: monospace; font-size: 0.9rem;">
+                <MudText Style="color: var(--goud);">Optie 1: appsettings.json</MudText>
+                <pre style="color: var(--creme); margin: 0.5rem 0;">{
+  "Gemini": {
+    "ApiKey": "AIza-uwesleutel"
+  }
+}</pre>
+                <MudDivider Class="my-3" />
+                <MudText Style="color: var(--goud);">Optie 2: User Secrets (aanbevolen)</MudText>
+                <pre style="color: var(--creme); margin: 0.5rem 0;">dotnet user-secrets set "Gemini:ApiKey" "AIza-uwesleutel"</pre>
+            </MudPaper>
+
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3 mt-4">Gebruikte Modellen</MudText>
+            <MudSimpleTable>
+                <thead>
+                    <tr>
+                        <th>Functie</th>
+                        <th>Model</th>
+                        <th>Kost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Chat / Analyse</td>
+                        <td><code>gemini-2.0-flash</code></td>
+                        <td>Gratis laeg beschikbaer!</td>
+                    </tr>
+                    <tr>
+                        <td>Embeddings</td>
+                        <td><code>text-embedding-004</code></td>
+                        <td>Gratis laeg beschikbaer!</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+
+            <MudText Typo="Typo.caption" Class="mt-2" Style="color: var(--koper);">
+                Goede tijding: Google Gemini heeft eene royale gratis laeg. De machien kost u wellicht niets!
+            </MudText>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="stematiek-title mb-3">Over de Machien</MudText>
+            <MudText Typo="Typo.body1" Class="mb-2">
+                <strong>Stem-O-Matiek</strong> is eene sarcastische webtool die AI gebruikt om de beslissingen
+                der Vlaamsche regeering te toetsen aen de partijprogramma's ende verkiezingsbeloften.
+            </MudText>
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.body2" Style="color: var(--koper); font-style: italic;">
+                „De machien liegt niet, zij rekent slechts."
+            </MudText>
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.caption">
+                Gebouwd met Blazor Server, MudBlazor, Semantic Kernel ende eene scheut Vlaemsch sarcasme.
+            </MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

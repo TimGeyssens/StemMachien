@@ -1,0 +1,515 @@
+@* De Sleutelmeester — Wizard voor het instellen van de machien *@
+@inject ApiKeyProvider KeyProvider
+@inject AiService AiService
+@inject AppDbContext Db
+@inject DocumentService DocService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@using Microsoft.EntityFrameworkCore
+
+<MudOverlay Visible="true" DarkBackground="true" ZIndex="9999">
+    <MudPaper Class="pa-6 ma-4" Style="max-width: 750px; width: 95vw; max-height: 90vh; overflow-y: auto;
+        background: linear-gradient(145deg, #121228 0%, #0f1a3a 100%);
+        border: 2px solid var(--goud); box-shadow: 0 0 40px rgba(218, 165, 32, 0.3);">
+
+        @* Header *@
+        <div class="text-center mb-4">
+            <MudText Typo="Typo.h4" Class="stematiek-title">
+                <span class="gear-spin">⚙</span> De Sleutelmeester <span class="gear-spin">⚙</span>
+            </MudText>
+            <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                Stap @(_stap + 1) van @_totaalStappen
+            </MudText>
+            <MudProgressLinear Value="@((_stap + 1) * 100.0 / _totaalStappen)" Color="Color.Primary"
+                              Class="mt-2" Rounded="true" Size="Size.Small" />
+        </div>
+
+        @* Stap 0: Welkom *@
+        @if (_stap == 0)
+        {
+            <div class="text-center">
+                <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Large"
+                         Style="color: var(--goud); font-size: 4rem;" Class="mb-3" />
+
+                <MudText Typo="Typo.h5" Class="stematiek-title mb-3">
+                    Welkome, Wakkere Burger!
+                </MudText>
+
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    Alvorens de Stem-O-Matiek haer analyse-machien kan aenwenden,
+                    dient gij eenen <strong>sleutel</strong> te verschaffen.
+                </MudText>
+
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    Dees sleutel is uwen persoonlijken Google Gemini API-sleutel.
+                    Elke burger draegt zijn eigen sleutel bij zich — de machien bewaert hem
+                    enkel in uwen webbrowser, nergens anders.
+                </MudText>
+
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4 text-left">
+                    <strong>Hoe verkrijgt gij eenen sleutel?</strong><br />
+                    1. Ga naer <MudLink Href="https://aistudio.google.com/apikeys" Target="_blank"
+                               Style="color: var(--goud);">aistudio.google.com/apikeys</MudLink><br />
+                    2. Meld u aen met uwen Google-account<br />
+                    3. Klik op „Create API Key"<br />
+                    4. Kopieer den sleutel (begint met <code>AIza</code>)
+                </MudAlert>
+
+                <MudText Typo="Typo.caption" Style="color: var(--koper); font-style: italic;">
+                    Goede tijding: Google Gemini heeft eene gratis laeg! De machien kost u wellicht niets.
+                </MudText>
+            </div>
+        }
+
+        @* Stap 1: API Key invoeren *@
+        else if (_stap == 1)
+        {
+            <MudText Typo="Typo.h5" Class="stematiek-title mb-3">
+                ⚙ Uwen Sleutel Invoeren ⚙
+            </MudText>
+
+            <MudText Typo="Typo.body1" Class="mb-4">
+                Plak hieronder uwen Google Gemini API-sleutel. Deze wordt enkel in uwen browser bewaard
+                ende nimmer op onzen server opgeslagen.
+            </MudText>
+
+            <MudTextField @bind-Value="_apiKey" Label="Gemini API Sleutel" Variant="Variant.Outlined"
+                          Placeholder="AIza..." InputType="InputType.Password" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Key" Class="mb-3" />
+
+            @if (_keyValidating)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    De machien toetst uwen sleutel...
+                </MudAlert>
+            }
+            else if (_keyValid == true)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-3">
+                    ✓ Uwen sleutel is geldig! De machien is gereed.
+                </MudAlert>
+            }
+            else if (_keyValid == false)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-3">
+                    ✗ Dees sleutel lijkt niet te werken.
+                    @if (!string.IsNullOrEmpty(_keyError))
+                    {
+                        <br /><code style="font-size: 0.8rem;">@_keyError</code>
+                    }
+                </MudAlert>
+            }
+        }
+
+        @* Stap 2: Documenten uploaden *@
+        else if (_stap == 2)
+        {
+            <MudText Typo="Typo.h5" Class="stematiek-title mb-3">
+                ⚙ Perkamenten der Partijen ⚙
+            </MudText>
+
+            var partijZonderDoc = _partijen.Where(p => !_partijDocStatus.GetValueOrDefault(p.Id, false)).ToList();
+            var aantalGeladen = _partijen.Count - partijZonderDoc.Count;
+
+            if (aantalGeladen > 0)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                    ✓ @aantalGeladen van de @_partijen.Count partijen hebben reeds een perkament.
+                </MudAlert>
+            }
+
+            <MudText Typo="Typo.body1" Class="mb-2">
+                Laed het verkiezingsprogramma op per partij (PDF of TXT), of plak den tekst.
+                Gij kunt dees stap ook overslaan en het later doen via <strong>De Gildekamers</strong>.
+            </MudText>
+
+            <MudExpansionPanels MultiExpansion="true">
+                @foreach (var partij in partijZonderDoc)
+                {
+                    var p = partij;
+                    <MudExpansionPanel Style="color: var(--creme);">
+                        <TitleContent>
+                            <div class="d-flex align-center gap-2">
+                                <MudAvatar Size="Size.Small" Style="@($"background-color: {p.Kleur};")">
+                                    @p.Afkorting[..Math.Min(2, p.Afkorting.Length)]
+                                </MudAvatar>
+                                <MudText>@p.Afkorting — @p.Naam</MudText>
+                                @if (_uploadingPartijId == p.Id)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudText Typo="Typo.caption" Class="mb-2" Style="color: var(--turquoise-dim); letter-spacing: 1px;">OPTIE 1: BESTAND OPLADEN</MudText>
+                            <div class="d-flex align-center gap-3 mb-2">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.UploadFile"
+                                           HtmlTag="label" Disabled="@(_uploadingPartijId != null)">
+                                    Kies PDF of TXT bestand
+                                    <InputFile OnChange="@(e => OnFileSelected(p, e.File))" accept=".pdf,.txt,.text"
+                                               style="display:none" />
+                                </MudButton>
+                                @if (_partijFileNames.GetValueOrDefault(p.Id) is string fname)
+                                {
+                                    <MudText Typo="Typo.body2" Style="color: var(--turquoise);">@fname</MudText>
+                                }
+                                @if (_uploadingPartijId == p.Id)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                            </div>
+
+                            <MudDivider Class="my-3" />
+                            <MudText Typo="Typo.caption" Class="mb-2" Style="color: var(--turquoise-dim); letter-spacing: 1px;">OPTIE 2: TEKST PLAKKEN</MudText>
+                            <MudTextField @bind-Value="_partijDocTexts[p.Id]"
+                                          Label="@($"Plak hier het programma van {p.Afkorting}")"
+                                          Variant="Variant.Outlined" Lines="6" Class="mb-2" />
+
+                            <MudButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small"
+                                       OnClick="@(() => UploadPartijDoc(p))"
+                                       Disabled="@(string.IsNullOrWhiteSpace(_partijDocTexts.GetValueOrDefault(p.Id)) || _uploadingPartijId != null)">
+                                Toevoegen & Indexeeren
+                            </MudButton>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        }
+
+        @* Stap 3: Klaar *@
+        else if (_stap == 3)
+        {
+            <div class="text-center">
+                <MudText Style="font-size: 4rem;" Class="mb-2">⚙</MudText>
+
+                <MudText Typo="Typo.h5" Class="stematiek-title mb-3">
+                    De Machien is Gereed!
+                </MudText>
+
+                <MudText Typo="Typo.body1" Class="mb-2">
+                    Uwen sleutel is ingesteld ende de Stem-O-Matiek kan haer werk aenvangen.
+                </MudText>
+
+                @{
+                    var loaded = _partijDocStatus.Count(kv => kv.Value);
+                    var total = _partijen.Count;
+                }
+
+                @if (loaded > 0)
+                {
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        Gij hebt <strong>@loaded van de @total</strong> partijprogramma's geladen.
+                        De overige kunt gij later toevoegen via De Gildekamers.
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        Gij hebt nog geene perkamenten geladen, maar dat kunt gij later doen
+                        via <strong>De Gildekamers</strong>.
+                    </MudText>
+                }
+
+                <MudText Typo="Typo.body2" Class="mb-4" Style="color: var(--koper); font-style: italic;">
+                    „De machien liegt niet, zij rekent slechts."
+                </MudText>
+            </div>
+        }
+
+        @* Navigatieknoppen *@
+        <MudDivider Class="my-4" />
+        <div class="d-flex justify-space-between">
+            @if (_stap > 0)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="VorigeStap">
+                    ← Vorige
+                </MudButton>
+            }
+            else
+            {
+                <div></div>
+            }
+
+            @if (_stap == 0)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="VolgendeStap">
+                    Aen de slag! →
+                </MudButton>
+            }
+            else if (_stap == 1)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ValideerEnGaVerder"
+                           Disabled="@(string.IsNullOrWhiteSpace(_apiKey) || _keyValidating)">
+                    @if (_keyValidating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Sleutel Bevestigen →
+                </MudButton>
+            }
+            else if (_stap == 2)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="VolgendeStap">
+                    @if (_partijDocStatus.Any(kv => kv.Value))
+                    {
+                        <span>Verder →</span>
+                    }
+                    else
+                    {
+                        <span>Overslaan →</span>
+                    }
+                </MudButton>
+            }
+            else if (_stap == 3)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Afsluiten" Size="Size.Large">
+                    ⚙ De Machien Starten ⚙
+                </MudButton>
+            }
+        </div>
+
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private int _stap = 0;
+    private const int _totaalStappen = 4;
+    private string _apiKey = string.Empty;
+    private bool _keyValidating;
+    private bool? _keyValid;
+    private string? _keyError;
+    private List<Partij> _partijen = new();
+    private Dictionary<int, string> _partijDocTexts = new();
+    private Dictionary<int, bool> _partijDocStatus = new();
+    private Dictionary<int, string> _partijFileNames = new();
+    private int? _uploadingPartijId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _partijen = await Db.Partijen.OrderByDescending(p => p.Zetels).ToListAsync();
+        foreach (var p in _partijen)
+        {
+            _partijDocTexts[p.Id] = string.Empty;
+        }
+
+        // Check welke partijen al documenten hebben (geïndexeerd of niet)
+        var partijIdsMetDoc = await Db.Documenten
+            .Select(d => d.PartijId)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var id in partijIdsMetDoc)
+        {
+            _partijDocStatus[id] = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Probeer key uit sessionStorage te halen
+            try
+            {
+                var savedKey = await JS.InvokeAsync<string?>("sessionStorage.getItem", "stematiek_apikey");
+                if (!string.IsNullOrWhiteSpace(savedKey))
+                {
+                    _apiKey = savedKey;
+                    KeyProvider.ApiKey = savedKey;
+                    // Als er al een key in de session zit, sluit wizard direct
+                    await OnCompleted.InvokeAsync();
+                }
+            }
+            catch { /* SSR pre-render, negeer */ }
+        }
+    }
+
+    private void VolgendeStap()
+    {
+        _stap++;
+        // Auto-skip step 2 if all partijen already have docs
+        if (_stap == 2 && _partijen.All(p => _partijDocStatus.GetValueOrDefault(p.Id, false)))
+            _stap++;
+    }
+
+    private void VorigeStap()
+    {
+        _stap--;
+        // Auto-skip step 2 backwards too
+        if (_stap == 2 && _partijen.All(p => _partijDocStatus.GetValueOrDefault(p.Id, false)))
+            _stap--;
+    }
+
+    private async Task ValideerEnGaVerder()
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey)) return;
+
+        _keyValidating = true;
+        _keyValid = null;
+        _keyError = null;
+        StateHasChanged();
+
+        try
+        {
+            // Stel de key in en probeer een simpele chat call
+            KeyProvider.ApiKey = _apiKey.Trim();
+
+            await AiService.ValidateKeyAsync();
+            _keyValid = true;
+
+            // Bewaar in sessionStorage
+            await JS.InvokeVoidAsync("sessionStorage.setItem", "stematiek_apikey", _apiKey.Trim());
+
+            // Auto-indexeer ongeïndexeerde documenten (geïmporteerde PDF's)
+            await IndexeerAlleOngeindexeerdeDocumentenAsync();
+
+            // Refresh doc status (any document, indexed or not)
+            var partijIdsMetDoc = await Db.Documenten
+                .Select(d => d.PartijId)
+                .Distinct()
+                .ToListAsync();
+            _partijDocStatus.Clear();
+            foreach (var id in partijIdsMetDoc)
+                _partijDocStatus[id] = true;
+
+            _stap++;
+        }
+        catch (Exception ex)
+        {
+            _keyValid = false;
+            _keyError = ex.InnerException?.Message ?? ex.Message;
+            KeyProvider.ApiKey = null;
+        }
+        finally
+        {
+            _keyValidating = false;
+        }
+    }
+
+    private async Task OnFileSelected(Partij partij, IBrowserFile? file)
+    {
+        if (file is null) return;
+
+        _uploadingPartijId = partij.Id;
+        _partijFileNames[partij.Id] = file.Name;
+        StateHasChanged();
+
+        try
+        {
+            // Max 10 MB
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            string extractedText;
+
+            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                ms.Position = 0;
+                extractedText = ExtractTextFromPdf(ms);
+            }
+            else
+            {
+                using var reader = new StreamReader(stream);
+                extractedText = await reader.ReadToEndAsync();
+            }
+
+            if (string.IsNullOrWhiteSpace(extractedText))
+            {
+                Snackbar.Add("Kon geenen tekst uit het bestand halen. Probeer het als .txt.", Severity.Warning);
+                return;
+            }
+
+            var doc = await DocService.VoegDocumentToeAsync(
+                partij.Id,
+                $"{file.Name} — {partij.Afkorting}",
+                extractedText,
+                "Partijprogramma"
+            );
+            await DocService.IndexeerDocumentAsync(doc.Id);
+            _partijDocStatus[partij.Id] = true;
+            Snackbar.Add($"Perkament '{file.Name}' van {partij.Afkorting} is geïndexeerd! ({extractedText.Length:N0} tekens)", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling bij bestand: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _uploadingPartijId = null;
+        }
+    }
+
+    private static string ExtractTextFromPdf(Stream pdfStream)
+    {
+        using var document = UglyToad.PdfPig.PdfDocument.Open(pdfStream);
+        var sb = new System.Text.StringBuilder();
+        foreach (var page in document.GetPages())
+        {
+            sb.AppendLine(page.Text);
+        }
+        return sb.ToString();
+    }
+
+    private async Task UploadPartijDoc(Partij partij)
+    {
+        var text = _partijDocTexts.GetValueOrDefault(partij.Id);
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        _uploadingPartijId = partij.Id;
+        StateHasChanged();
+
+        try
+        {
+            var doc = await DocService.VoegDocumentToeAsync(
+                partij.Id,
+                $"Verkiezingsprogramma {partij.Afkorting} 2024",
+                text,
+                "Partijprogramma"
+            );
+            await DocService.IndexeerDocumentAsync(doc.Id);
+            _partijDocStatus[partij.Id] = true;
+            Snackbar.Add($"Perkament van {partij.Afkorting} is geïndexeerd!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _uploadingPartijId = null;
+        }
+    }
+
+    private async Task IndexeerAlleOngeindexeerdeDocumentenAsync()
+    {
+        var ongeindexeerd = await Db.Documenten
+            .Where(d => !d.IsGeindexeerd)
+            .ToListAsync();
+
+        foreach (var doc in ongeindexeerd)
+        {
+            try
+            {
+                await DocService.IndexeerDocumentAsync(doc.Id);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Indexeerfout voor '{doc.Titel}': {ex.Message}", Severity.Warning);
+            }
+        }
+
+        if (ongeindexeerd.Any())
+        {
+            Snackbar.Add($"{ongeindexeerd.Count} perkament(en) automatisch geïndexeerd!", Severity.Success);
+        }
+    }
+
+    private async Task Afsluiten()
+    {
+        await OnCompleted.InvokeAsync();
+    }
+}

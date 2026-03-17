@@ -1,0 +1,681 @@
+/* ============================================================
+   STEM-O-MATIEK — 1950s Space Age Retro-Futurisme
+   Atoomtijdperk ✦ Googie ✦ De Toekomst van Gisteren
+   ============================================================ */
+
+/* ── Palette ── */
+:root {
+    --turquoise: #40E0D0;
+    --turquoise-dim: #2BA8A0;
+    --turquoise-glow: rgba(64, 224, 208, 0.35);
+    --coral: #E8735A;
+    --coral-bright: #FF8A70;
+    --coral-dim: #B85A46;
+    --gold: #FFD700;
+    --gold-dim: #C5A600;
+    --navy: #0B1026;
+    --navy-mid: #111B3A;
+    --navy-light: #1A254D;
+    --cream: #FFF8E7;
+    --cream-dim: #E8DCC8;
+    --chrome: #C8CCD0;
+    --chrome-bright: #E8ECF0;
+    --chrome-dim: #8A9098;
+
+    /* MudBlazor compat aliases */
+    --koper: var(--coral);
+    --koper-helder: var(--coral-bright);
+    --goud: var(--gold);
+    --goud-helder: #FFE44D;
+    --creme: var(--cream);
+    --amber-bright: var(--gold);
+    --amber-dim: var(--gold-dim);
+    --amber: var(--gold);
+    --phosphor-dim: var(--turquoise-dim);
+}
+
+/* ── Base ── */
+html {
+    font-size: 17px;
+}
+
+body {
+    background: var(--navy) !important;
+    color: var(--cream) !important;
+    font-family: 'Space Grotesk', 'Segoe UI', sans-serif !important;
+    line-height: 1.65;
+}
+
+/* ── Space-Age Outer Frame ── */
+.crt-frame {
+    position: relative;
+    min-height: 100vh;
+    border: 4px solid var(--chrome-dim);
+    border-radius: 24px;
+    box-shadow:
+        inset 0 0 80px rgba(64, 224, 208, 0.03),
+        0 0 30px rgba(11, 16, 38, 0.8),
+        0 0 1px var(--chrome);
+    background: var(--navy);
+    overflow: hidden;
+}
+
+/* Subtle starburst pattern overlay */
+.crt-frame::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background:
+        radial-gradient(circle at 20% 30%, rgba(64, 224, 208, 0.02) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(232, 115, 90, 0.02) 0%, transparent 50%),
+        radial-gradient(circle at 50% 10%, rgba(255, 215, 0, 0.015) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.crt-frame::after {
+    display: none;
+}
+
+/* ── Content Area ── */
+.stematiek-content {
+    background: linear-gradient(175deg, var(--navy) 0%, var(--navy-mid) 100%) !important;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* ── Typography ── */
+.stematiek-title {
+    font-family: 'Orbitron', 'Space Grotesk', sans-serif !important;
+    color: var(--turquoise) !important;
+    text-shadow: 0 0 20px var(--turquoise-glow);
+    letter-spacing: 4px;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+}
+
+.stematiek-subtitle {
+    font-family: 'Space Grotesk', sans-serif !important;
+    color: var(--coral-bright) !important;
+    font-style: italic;
+    font-size: 1.15rem;
+}
+
+/* Size overrides */
+.mud-typography-h3.stematiek-title { font-size: 2.4rem !important; line-height: 1.2; }
+.mud-typography-h4.stematiek-title { font-size: 1.8rem !important; line-height: 1.3; }
+.mud-typography-h5.stematiek-title { font-size: 1.4rem !important; }
+.mud-typography-h6.stematiek-subtitle { font-size: 1.2rem !important; }
+
+/* ── App Bar ── */
+.stematiek-appbar {
+    background: linear-gradient(90deg, var(--navy-mid) 0%, var(--navy-light) 50%, var(--navy-mid) 100%) !important;
+    border-bottom: 3px solid var(--turquoise-dim) !important;
+    box-shadow: 0 4px 25px rgba(64, 224, 208, 0.1) !important;
+}
+
+.stematiek-appbar .stematiek-title {
+    font-size: 1.1rem !important;
+    letter-spacing: 5px;
+    color: var(--gold) !important;
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+/* ── Status Bar (bottom) ── */
+.crt-statusbar {
+    background: linear-gradient(90deg, var(--navy-mid), var(--navy-light), var(--navy-mid));
+    border-top: 2px solid var(--chrome-dim);
+    padding: 0.5rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    color: var(--chrome-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.crt-statusbar .crt-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.crt-indicator-green { color: var(--turquoise); background: var(--turquoise); }
+.crt-indicator-red { color: var(--coral); background: var(--coral); }
+.crt-indicator-amber { color: var(--gold); background: var(--gold); }
+
+/* ── Top Navigation Bar ── */
+.stematiek-topnav {
+    background: var(--navy-light) !important;
+    border-bottom: 2px solid rgba(64, 224, 208, 0.2) !important;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3) !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    position: sticky !important;
+    z-index: 1099;
+}
+
+.topnav-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    width: 100%;
+    padding: 0 0.25rem;
+}
+
+.topnav-link {
+    color: var(--chrome);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+}
+
+.topnav-link:hover {
+    color: var(--turquoise);
+    text-shadow: 0 0 8px var(--turquoise-glow);
+    background: rgba(64, 224, 208, 0.06);
+    border-bottom-color: var(--turquoise-dim);
+}
+
+.topnav-link:active,
+.topnav-link.active {
+    color: var(--turquoise);
+    text-shadow: 0 0 10px var(--turquoise-glow);
+    border-bottom-color: var(--turquoise);
+}
+
+.topnav-separator {
+    color: var(--chrome-dim);
+    padding: 0 0.15rem;
+    opacity: 0.3;
+}
+
+/* ── Space-Age Cards ── */
+.mud-card, .mud-paper {
+    background: linear-gradient(145deg, var(--navy-mid) 0%, var(--navy-light) 100%) !important;
+    border: 1px solid rgba(64, 224, 208, 0.15) !important;
+    border-radius: 16px !important;
+    box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(200, 204, 208, 0.05) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mud-card:hover {
+    border-color: rgba(64, 224, 208, 0.3) !important;
+    box-shadow:
+        0 12px 40px rgba(64, 224, 208, 0.08),
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(200, 204, 208, 0.08) !important;
+    transform: translateY(-3px);
+}
+
+.mud-card-content {
+    padding: 1.5rem !important;
+}
+
+/* ── Buttons ── */
+.mud-button-filled.mud-button-filled-primary {
+    background: linear-gradient(135deg, var(--turquoise) 0%, var(--turquoise-dim) 100%) !important;
+    color: var(--navy) !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    border: none !important;
+    border-radius: 50px !important;
+    padding: 0.6rem 2rem;
+    text-transform: uppercase !important;
+    box-shadow: 0 4px 15px rgba(64, 224, 208, 0.3);
+    transition: all 0.25s ease;
+}
+
+.mud-button-filled.mud-button-filled-primary:hover {
+    background: linear-gradient(135deg, #50F0E0 0%, var(--turquoise) 100%) !important;
+    box-shadow: 0 6px 25px rgba(64, 224, 208, 0.4);
+    transform: translateY(-1px);
+}
+
+.mud-button-filled.mud-button-filled-secondary {
+    background: linear-gradient(135deg, var(--coral) 0%, var(--coral-dim) 100%) !important;
+    color: var(--cream) !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    border: none !important;
+    border-radius: 50px !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 4px 15px rgba(232, 115, 90, 0.25);
+}
+
+.mud-button-filled.mud-button-filled-secondary:hover {
+    background: linear-gradient(135deg, var(--coral-bright) 0%, var(--coral) 100%) !important;
+    box-shadow: 0 6px 25px rgba(232, 115, 90, 0.35);
+}
+
+.mud-button-filled.mud-button-filled-warning {
+    border-radius: 50px !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase !important;
+    letter-spacing: 2px;
+}
+
+.mud-button-filled.mud-button-filled-error {
+    border-radius: 50px !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase !important;
+    letter-spacing: 2px;
+}
+
+.mud-button-outlined {
+    border-radius: 50px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px;
+    font-family: 'Orbitron', sans-serif !important;
+    font-size: 0.75rem;
+}
+
+.mud-button-text {
+    text-transform: uppercase !important;
+    letter-spacing: 1px;
+    font-family: 'Space Grotesk', sans-serif !important;
+    color: var(--chrome) !important;
+    border-radius: 50px !important;
+}
+
+.mud-button-text:hover {
+    color: var(--turquoise) !important;
+    background: rgba(64, 224, 208, 0.08) !important;
+}
+
+.mud-button-size-large {
+    font-size: 0.85rem !important;
+    padding: 0.7rem 2.5rem !important;
+}
+
+/* ── Score Badges ── */
+.score-excellent {
+    background: linear-gradient(135deg, var(--turquoise), var(--turquoise-dim)) !important;
+    color: var(--navy) !important;
+    font-weight: 700;
+    border-radius: 50px !important;
+}
+.score-good {
+    background: linear-gradient(135deg, var(--turquoise-dim), #228880) !important;
+    color: var(--cream) !important;
+    border-radius: 50px !important;
+}
+.score-neutral {
+    background: linear-gradient(135deg, var(--chrome-dim), #707478) !important;
+    color: var(--cream) !important;
+    border-radius: 50px !important;
+}
+.score-poor {
+    background: linear-gradient(135deg, var(--coral-dim), #984030) !important;
+    color: var(--cream) !important;
+    border-radius: 50px !important;
+}
+.score-terrible {
+    background: linear-gradient(135deg, #882020, #AA3030) !important;
+    color: var(--cream) !important;
+    border-radius: 50px !important;
+}
+
+/* ── Zetelverdeling Chart ── */
+.zetel-bar {
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-right: 2px solid var(--navy);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.zetel-bar:hover {
+    filter: brightness(1.2) saturate(1.2);
+    transform: scaleY(1.12);
+    z-index: 1;
+}
+
+/* ── Belofte Barometer ── */
+.barometer-container {
+    position: relative;
+    width: 100%;
+    height: 22px;
+    background: var(--navy);
+    border-radius: 11px;
+    border: 2px solid rgba(64, 224, 208, 0.2);
+    overflow: hidden;
+}
+
+.barometer-fill {
+    height: 100%;
+    border-radius: 11px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(90deg, #AA3030, var(--coral), var(--gold-dim), var(--turquoise-dim), var(--turquoise));
+    background-size: 500% 100%;
+}
+
+/* ── Tables ── */
+.mud-table {
+    border: 1px solid rgba(64, 224, 208, 0.15) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.mud-table .mud-table-head .mud-table-cell {
+    background: rgba(64, 224, 208, 0.06) !important;
+    color: var(--turquoise) !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    font-size: 0.75rem;
+    border-bottom: 2px solid rgba(64, 224, 208, 0.15) !important;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.mud-table .mud-table-body .mud-table-row:hover {
+    background: rgba(64, 224, 208, 0.04) !important;
+}
+
+.mud-table .mud-table-body .mud-table-cell {
+    font-size: 0.95rem;
+    color: var(--cream);
+    border-bottom: 1px solid rgba(200, 204, 208, 0.06) !important;
+}
+
+/* ── Input Fields ── */
+.mud-input-control .mud-input {
+    color: var(--cream) !important;
+    font-size: 1rem;
+}
+
+.mud-input-control .mud-input-label {
+    color: var(--turquoise-dim) !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.mud-input-outlined .mud-input-outlined-border {
+    border-color: rgba(64, 224, 208, 0.2) !important;
+    border-radius: 12px !important;
+}
+
+.mud-input-outlined:hover .mud-input-outlined-border,
+.mud-input-outlined.mud-input-control-focused .mud-input-outlined-border {
+    border-color: var(--turquoise) !important;
+    box-shadow: 0 0 12px rgba(64, 224, 208, 0.15);
+}
+
+/* ── Alerts ── */
+.mud-alert {
+    border-radius: 12px !important;
+    font-size: 1rem;
+}
+
+/* ── Chips ── */
+.mud-chip {
+    border-radius: 50px !important;
+    font-weight: 600;
+    letter-spacing: 1px;
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+
+/* ── Avatars ── */
+.mud-avatar {
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 700;
+    border-radius: 50% !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Atom Spin Animation ── */
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.gear-spin {
+    display: inline-block;
+    animation: spin-slow 6s linear infinite;
+}
+
+/* ── Orbit pulse for decorations ── */
+@keyframes orbit-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+}
+
+.orbit-pulse {
+    animation: orbit-pulse 3s ease-in-out infinite;
+}
+
+/* ── AI Commentaar ── */
+.ai-commentaar {
+    background: rgba(64, 224, 208, 0.04);
+    border-left: 4px solid var(--turquoise-dim);
+    padding: 1.2rem 1.75rem;
+    margin: 0.75rem 0;
+    font-size: 1.05rem;
+    font-style: italic;
+    color: var(--cream-dim);
+    border-radius: 0 12px 12px 0;
+}
+
+.ai-commentaar::before {
+    content: '✦ ';
+    color: var(--turquoise);
+}
+
+/* ── Cursor helper ── */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* ── Mode Selection Cards ── */
+.mode-card {
+    padding: 2.5rem 2rem !important;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid rgba(64, 224, 208, 0.15) !important;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 20px !important;
+}
+
+.mode-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(64, 224, 208, 0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.mode-card:hover::before {
+    opacity: 1;
+}
+
+.mode-card:hover {
+    border-color: var(--turquoise) !important;
+    box-shadow:
+        0 16px 50px rgba(64, 224, 208, 0.1),
+        0 0 30px rgba(64, 224, 208, 0.05) !important;
+    transform: translateY(-5px);
+}
+
+.mode-card .mode-icon {
+    font-size: 4rem;
+    line-height: 1;
+    margin-bottom: 1.2rem;
+    filter: drop-shadow(0 0 15px rgba(64, 224, 208, 0.3));
+}
+
+/* ── Stat numbers ── */
+.mud-card .mud-typography-h4.stematiek-title {
+    font-size: 2.8rem !important;
+    text-shadow: 0 0 20px var(--turquoise-glow);
+    letter-spacing: 4px;
+}
+
+/* ── Partij selection highlight ── */
+.partij-card-selected {
+    border-color: var(--turquoise) !important;
+    box-shadow:
+        0 0 0 2px var(--turquoise),
+        0 8px 25px rgba(64, 224, 208, 0.15) !important;
+    transform: translateY(-3px) scale(1.02);
+}
+
+/* ── Bevestiging panel ── */
+.bevestiging-panel {
+    border: 2px solid var(--coral) !important;
+    max-width: 720px;
+    margin: 2rem auto;
+    border-radius: 20px !important;
+    background: linear-gradient(145deg, var(--navy-mid), var(--navy-light)) !important;
+    box-shadow: 0 20px 60px rgba(232, 115, 90, 0.1) !important;
+}
+
+/* ── Body text ── */
+.mud-typography-body1 {
+    font-size: 1.05rem !important;
+    line-height: 1.7;
+}
+
+.mud-typography-body2 {
+    font-size: 0.95rem !important;
+    line-height: 1.6;
+}
+
+.mud-typography-caption {
+    font-size: 0.8rem !important;
+    font-family: 'Orbitron', sans-serif !important;
+    letter-spacing: 2px;
+}
+
+.mud-typography-subtitle1,
+.mud-typography-subtitle2 {
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+
+/* ── Expansion Panels ── */
+.mud-expand-panel {
+    border-radius: 12px !important;
+    margin-bottom: 4px;
+    border: 1px solid rgba(64, 224, 208, 0.1) !important;
+}
+
+/* ── Progress bars ── */
+.mud-progress-linear {
+    border-radius: 8px !important;
+    height: 6px !important;
+    background: var(--navy) !important;
+}
+
+/* ── Dividers ── */
+.mud-divider {
+    border-color: rgba(200, 204, 208, 0.1) !important;
+}
+
+/* ── Overlay (Wizard) ── */
+.mud-overlay .mud-paper {
+    border-radius: 20px !important;
+    border: 2px solid var(--turquoise-dim) !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--navy); }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--turquoise-dim), var(--chrome-dim));
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--turquoise); }
+
+/* ── Dialog ── */
+.mud-dialog {
+    background: linear-gradient(145deg, var(--navy-mid), var(--navy-light)) !important;
+    border: 2px solid var(--turquoise-dim) !important;
+    border-radius: 20px !important;
+}
+
+/* ── Snackbar ── */
+.mud-snackbar {
+    border-radius: 12px !important;
+}
+
+/* ── Selection ── */
+::selection {
+    background: var(--turquoise);
+    color: var(--navy);
+}
+
+/* Strong tags */
+strong {
+    color: var(--turquoise);
+}
+
+/* ── Starburst decoration ── */
+.starburst {
+    display: inline-block;
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    font-size: 1.2em;
+}
+
+/* ── Counter display ── */
+.counter-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--turquoise);
+    text-shadow: 0 0 15px var(--turquoise-glow);
+    letter-spacing: 6px;
+    display: inline-block;
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+    .topnav-link { font-size: 0.58rem; padding: 0.4rem 0.45rem; letter-spacing: 1px; }
+}
+
+@media (max-width: 600px) {
+    html { font-size: 15px; }
+    .crt-frame { border-width: 2px; border-radius: 12px; }
+    .mud-typography-h3.stematiek-title { font-size: 1.6rem !important; }
+    .mud-typography-h4.stematiek-title { font-size: 1.3rem !important; }
+    .mud-card .mud-typography-h4.stematiek-title { font-size: 2rem !important; }
+    .crt-statusbar { font-size: 0.55rem; }
+    .topnav-link { font-size: 0.52rem; padding: 0.35rem 0.35rem; letter-spacing: 0.5px; }
+}

@@ -1,0 +1,73 @@
+@* Analyse kaart: toont resultaat van AI-analyse per partij *@
+
+<MudCard Class="mb-3">
+    <MudCardHeader>
+        <CardHeaderAvatar>
+            <MudAvatar Style="@($"background-color: {PartijKleur};")" Size="Size.Medium">
+                @PartijAfkorting[..Math.Min(2, PartijAfkorting.Length)]
+            </MudAvatar>
+        </CardHeaderAvatar>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">@PartijNaam</MudText>
+            <MudText Typo="Typo.caption" Style="color: var(--koper);">Analyse van @Datum.ToString("dd MMMM yyyy")</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudChip T="string" Size="Size.Medium" Class="@GetScoreClass()">
+                @AnalyseScore / 100
+            </MudChip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <BelofteBarometer Score="@AnalyseScore" Label="Overeenkomst met partijprogramma" />
+
+        @if (!string.IsNullOrEmpty(Samenvatting))
+        {
+            <MudText Typo="Typo.body1" Class="mt-3 mb-2">@Samenvatting</MudText>
+        }
+
+        @if (!string.IsNullOrEmpty(Commentaar))
+        {
+            <div class="ai-commentaar">
+                @Commentaar
+            </div>
+        }
+
+        @if (RelevantePassages?.Any() == true)
+        {
+            <MudExpansionPanels Class="mt-3">
+                <MudExpansionPanel Text="Gebruikte bronpassages" Style="color: var(--creme);">
+                    @foreach (var passage in RelevantePassages)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-2">
+                            @if (!string.IsNullOrEmpty(passage.sectie))
+                            {
+                                <strong>§ @passage.sectie</strong><br />
+                            }
+                            @passage.tekst
+                        </MudAlert>
+                    }
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public string PartijNaam { get; set; } = string.Empty;
+    [Parameter] public string PartijAfkorting { get; set; } = string.Empty;
+    [Parameter] public string PartijKleur { get; set; } = "#888";
+    [Parameter] public int AnalyseScore { get; set; }
+    [Parameter] public string? Samenvatting { get; set; }
+    [Parameter] public string? Commentaar { get; set; }
+    [Parameter] public DateTime Datum { get; set; } = DateTime.UtcNow;
+    [Parameter] public List<(string? sectie, string tekst)>? RelevantePassages { get; set; }
+
+    private string GetScoreClass() => AnalyseScore switch
+    {
+        >= 80 => "score-excellent",
+        >= 60 => "score-good",
+        >= 40 => "score-neutral",
+        >= 20 => "score-poor",
+        _ => "score-terrible"
+    };
+}

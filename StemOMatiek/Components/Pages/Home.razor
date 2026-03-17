@@ -1,0 +1,446 @@
+@page "/"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Stem-O-Matiek — Het Analytisch Stem-Machien</PageTitle>
+
+<div class="text-center mb-6">
+    <MudText Typo="Typo.caption" Style="color: var(--gold-dim); letter-spacing: 3px;">✦ ATOOMTIJDPERK ANALYSE SYSTEEM V.1.024 ✦</MudText>
+    <MudText Typo="Typo.h3" Class="stematiek-title mb-2">
+        Het Analytisch Stem-Machien
+    </MudText>
+</div>
+
+@* ═══════════════════════════════════════════════ *@
+@* MODUS KEUZE — Burger of Politieker             *@
+@* ═══════════════════════════════════════════════ *@
+@if (_modus == Modus.Keuze)
+{
+    <div class="text-center mb-8">
+        <MudText Typo="Typo.h6" Class="stematiek-subtitle">
+            Wie zijt gij, die het waegt de Waerheydsmachien te raedplegen?
+        </MudText>
+    </div>
+
+    <MudGrid Justify="Justify.Center" Spacing="6" Class="mt-2">
+        <MudItem xs="12" md="5">
+            <MudCard Class="mode-card" @onclick="KiesBurger">
+                <MudCardContent>
+                    <MudText Typo="Typo.h4" Class="stematiek-title mb-3">De Wakkere Burger</MudText>
+                    <MudText Typo="Typo.body1" Style="color: var(--coral-bright);">
+                        Gij zijt een rechtschaepen onderdaen des Vlaemsche volks,
+                        die wenst te weten of zijne verkozenen hunne beloften gestand doen.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mt-3 mb-4" Style="color: var(--turquoise-dim);">
+                        ✦ Toets alle partijen aen hunne woorden ende daden
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="2" Class="d-flex align-center justify-center">
+            <MudText Typo="Typo.h5" Style="color: var(--gold-dim); font-family: 'Orbitron', sans-serif; letter-spacing: 3px;">
+                — OF —
+            </MudText>
+        </MudItem>
+
+        <MudItem xs="12" md="5">
+            <MudCard Class="mode-card" @onclick="KiesPolitieker">
+                <MudCardContent>
+                    <MudText Typo="Typo.h4" Class="stematiek-title mb-3">De Politieker</MudText>
+                    <MudText Typo="Typo.body1" Style="color: var(--coral-bright);">
+                        Gij zijt een verkozen volksvertegenwoordiger die — naer het schijnt —
+                        vergeten is wat er in zijn eigen partijprogramma staet.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mt-3 mb-4" Style="color: var(--turquoise-dim);">
+                        ✦ Ontdek uwe eigen meening via de Machien
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@* ═══════════════════════════════════════════════ *@
+@* POLITIEKER — Partijkeuze                        *@
+@* ═══════════════════════════════════════════════ *@
+else if (_modus == Modus.PolitiekerKeuze)
+{
+    <MudText Typo="Typo.h6" Class="stematiek-subtitle mb-2">
+        Aha, een politieker! Welkome in den Spiegel der Schaamte.
+    </MudText>
+    <MudText Typo="Typo.body1" Class="mb-6" Style="color: var(--koper);">
+        Kies hieronder uwe partij — indien gij die nog herinnert, uiteraard.
+    </MudText>
+
+    <MudGrid Justify="Justify.Center" Spacing="4">
+        @foreach (var partij in _partijen)
+        {
+            <MudItem xs="6" sm="4" md="3">
+                <MudCard Class="@($"cursor-pointer {(partij == _gekozenPartij ? "partij-card-selected" : "")}")" @onclick="() => SelecteerPartij(partij)"
+                         Style="@($"border: 2px solid {(partij == _gekozenPartij ? partij.Kleur : "transparent")}")">
+                    <MudCardContent Class="text-center pa-4">
+                        <MudAvatar Size="Size.Large" Style="@($"background-color: {partij.Kleur}; color: white;")">
+                            @partij.Afkorting.Substring(0, Math.Min(3, partij.Afkorting.Length))
+                        </MudAvatar>
+                        <MudText Typo="Typo.subtitle1" Class="stematiek-title mt-2">@partij.Naam</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                            @partij.Zetels zetel@(partij.Zetels != 1 ? "s" : "")
+                            · @(partij.InRegering ? "Regeering" : "Oppositie")
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <div class="d-flex justify-center mt-6 gap-4">
+        <MudButton Variant="Variant.Text" OnClick="NaarKeuze" StartIcon="@Icons.Material.Filled.ArrowBack">
+            Terug
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_gekozenPartij == null)"
+                   OnClick="BevestigPartij" StartIcon="@Icons.Material.Filled.CheckCircle" Size="Size.Large">
+            Dit is mijne partij!
+        </MudButton>
+    </div>
+}
+
+@* ═══════════════════════════════════════════════ *@
+@* POLITIEKER — Sarcastische bevestiging           *@
+@* ═══════════════════════════════════════════════ *@
+else if (_modus == Modus.PolitiekerBevestiging)
+{
+    <MudPaper Class="bevestiging-panel pa-8 mt-4 text-center">
+        <div style="font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; color: var(--coral-bright); text-shadow: 0 0 15px rgba(232,115,90,0.5);">✦ WAERSCHUWING ✦</div>
+
+        <MudText Typo="Typo.h4" Class="stematiek-title mt-4">
+            Wacht eens even, @_gekozenPartij?.Naam-politieker!
+        </MudText>
+
+        <MudText Typo="Typo.h6" Class="mt-4" Style="color: var(--koper);">
+            Zijt gij daadwerkelijck, oprecht, ende in alle eerbaerheyd
+            een lid van <strong style="color: @_gekozenPartij?.Kleur">@_gekozenPartij?.Naam</strong>?
+        </MudText>
+
+        <MudText Typo="Typo.body1" Class="mt-4">
+            De Machien waerschuwt u: hetgeen gij te zien krijgt,
+            kan pijnlijck zijn voor uwe politieke carrière.
+            Gij zult immers geconfronteerd worden met datgene
+            wat uwe eigen partij ooit beloofde — ende wat er van terechtkwam.
+        </MudText>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.body2" Class="mb-4">
+            <em>"Een politieker die zijn eigen programma leest — dat is pas revolutionair!"</em>
+            <br />— De Waerheydsmachien, Anno @DateTime.Now.Year
+        </MudText>
+
+        @if (!_tweedeBevestiging)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" Size="Size.Large"
+                       OnClick="ToonTweedeBevestiging"
+                       StartIcon="@Icons.Material.Filled.LocalFireDepartment">
+                Jansen! Ik ben zeker!
+            </MudButton>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Filled">
+                Echt waer? Gij, een <strong>@_gekozenPartij?.Afkorting</strong>-politieker,
+                gaet vrijwillig uwe eigen beloften naechecken?
+                De Machien is onder den indruk van uwen moed — of uwe naïviteyt.
+            </MudAlert>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Large"
+                       OnClick="BevestigDefinitief"
+                       StartIcon="@Icons.Material.Filled.Bolt">
+                Ik zweer het op mijne verkiezingsbeloften! ⚡
+            </MudButton>
+        }
+
+        <div class="mt-4">
+            <MudButton Variant="Variant.Text" OnClick="() => { _modus = Modus.PolitiekerKeuze; _tweedeBevestiging = false; }"
+                       StartIcon="@Icons.Material.Filled.ArrowBack">
+                Ik heb mij bedacht...
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@* ═══════════════════════════════════════════════ *@
+@* BURGER MODUS — Volledig dashboard                *@
+@* ═══════════════════════════════════════════════ *@
+else if (_modus == Modus.Burger)
+{
+    <MudText Typo="Typo.h6" Class="stematiek-subtitle mb-6">
+        Welkome, Wakkere Burger! Wij toetsen uwe verkozenen aen hunne beloften!
+    </MudText>
+
+    @if (_partijen.Any())
+    {
+        <ZetelChart Partijen="_partijen" />
+    }
+
+    @RenderDashboardStatistieken()
+    @RenderRecenteAnalyses(_recenteAnalyses)
+
+    <div class="mt-4">
+        <MudButton Variant="Variant.Text" OnClick="NaarKeuze" StartIcon="@Icons.Material.Filled.ArrowBack">
+            Terug naer de keuze
+        </MudButton>
+    </div>
+}
+
+@* ═══════════════════════════════════════════════ *@
+@* POLITIEKER MODUS — Gefilterd dashboard           *@
+@* ═══════════════════════════════════════════════ *@
+else if (_modus == Modus.Politieker)
+{
+    <MudText Typo="Typo.h6" Class="stematiek-subtitle mb-2">
+        Den Spiegel der Schaamte voor
+        <MudChip T="string" Style="@($"background-color: {_gekozenPartij?.Kleur}; color: white;")">
+            @_gekozenPartij?.Naam
+        </MudChip>
+    </MudText>
+    <MudText Typo="Typo.body1" Class="mb-6" Style="color: var(--koper);">
+        Hieronder ziet gij hoe uwe partij hare schoone woorden in daden omzet — of juist niet.
+    </MudText>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" md="4">
+            <MudCard Style="@($"border-left: 4px solid {_gekozenPartij?.Kleur}")">
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.EventSeat" Size="Size.Large" Style="color: var(--goud);" />
+                    <MudText Typo="Typo.h4" Class="stematiek-title">@_gekozenPartij?.Zetels</MudText>
+                    <MudText Typo="Typo.body1">
+                        Zetel@(_gekozenPartij?.Zetels != 1 ? "s" : "") in het Parlement
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                        @(_gekozenPartij?.InRegering == true ? "In de regeering — gij kunt niets meer ontkennen" : "In de oppositie — gij moogt nog effen klagen")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Style="@($"border-left: 4px solid {_gekozenPartij?.Kleur}")">
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Style="color: var(--goud);" />
+                    <MudText Typo="Typo.h4" Class="stematiek-title">@_partijDocumenten</MudText>
+                    <MudText Typo="Typo.body1">Perkamenten uwer partij</MudText>
+                    <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                        @(_partijDocumenten > 0 ? "De bewijsstukken liggen klaer" : "Nog geene perkamenten — verdacht stil...")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Style="@($"border-left: 4px solid {_gekozenPartij?.Kleur}")">
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Analytics" Size="Size.Large" Style="color: var(--goud);" />
+                    <MudText Typo="Typo.h4" Class="stematiek-title">@_partijAnalyses.Count</MudText>
+                    <MudText Typo="Typo.body1">Analyses uwer beloften</MudText>
+                    <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                        @if (_partijAnalyses.Any())
+                        {
+                            var gem = _partijAnalyses.Average(a => a.OvereenkomstScore);
+                            <text>Gemiddelde overeenkomst: @gem.ToString("F0")% — @(gem >= 70 ? "verrassend deftig!" : gem >= 40 ? "matigjes, zoels verwacht" : "auwch, dat doet pijn")</text>
+                        }
+                        else
+                        {
+                            <text>Nog geene analyses — de Machien wacht</text>
+                        }
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    @if (_partijAnalyses.Any())
+    {
+        <MudText Typo="Typo.h5" Class="stematiek-title mt-6 mb-3">
+            Wat de Machien vond over <span style="color: @_gekozenPartij?.Kleur">@_gekozenPartij?.Afkorting</span>
+        </MudText>
+        @foreach (var analyse in _partijAnalyses)
+        {
+            <AnalyseCard
+                PartijNaam="@analyse.Partij.Naam"
+                PartijAfkorting="@analyse.Partij.Afkorting"
+                PartijKleur="@analyse.Partij.Kleur"
+                AnalyseScore="@analyse.OvereenkomstScore"
+                Samenvatting="@analyse.Samenvatting"
+                Commentaar="@analyse.Commentaar"
+                Datum="@analyse.DatumAnalyse" />
+        }
+    }
+    else
+    {
+        <MudPaper Class="pa-6 mt-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="color: var(--koper);" />
+            <MudText Typo="Typo.h6" Class="stematiek-title mt-2">De Machien heeft nog niets gevonden!</MudText>
+            <MudText Typo="Typo.body1" Class="mt-2">
+                Er zijn nog geene analyses voor <strong>@_gekozenPartij?.Naam</strong>.
+                Voeg eerst het partijprogramma toe via <strong>De Gildekamers</strong>,
+                dan beslissingen via <strong>Het Decretenlogboeck</strong>,
+                en laet de Machien oordeelen!
+            </MudText>
+        </MudPaper>
+    }
+
+    <div class="mt-4">
+        <MudButton Variant="Variant.Text" OnClick="NaarKeuze" StartIcon="@Icons.Material.Filled.ArrowBack">
+            Terug naer de keuze
+        </MudButton>
+    </div>
+}
+
+@code {
+    private enum Modus { Keuze, Burger, PolitiekerKeuze, PolitiekerBevestiging, Politieker }
+
+    private Modus _modus = Modus.Keuze;
+    private List<Partij> _partijen = new();
+    private int _aantalBeslissingen;
+    private int _aantalGeanalyseerd;
+    private int _aantalDocumenten;
+    private List<Analyse> _recenteAnalyses = new();
+
+    // Politieker-specifiek
+    private Partij? _gekozenPartij;
+    private bool _tweedeBevestiging;
+    private List<Analyse> _partijAnalyses = new();
+    private int _partijDocumenten;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _partijen = await Db.Partijen.OrderByDescending(p => p.Zetels).ToListAsync();
+        _aantalBeslissingen = await Db.Beslissingen.CountAsync();
+        _aantalGeanalyseerd = await Db.Beslissingen.Where(b => b.Analyses.Any()).CountAsync();
+        _aantalDocumenten = await Db.Documenten.Where(d => d.IsGeindexeerd).CountAsync();
+        _recenteAnalyses = await Db.Analyses
+            .Include(a => a.Partij)
+            .Include(a => a.Beslissing)
+            .OrderByDescending(a => a.DatumAnalyse)
+            .Take(5)
+            .ToListAsync();
+    }
+
+    private void KiesBurger() => _modus = Modus.Burger;
+
+    private void KiesPolitieker() => _modus = Modus.PolitiekerKeuze;
+
+    private void SelecteerPartij(Partij partij) => _gekozenPartij = partij;
+
+    private void BevestigPartij()
+    {
+        if (_gekozenPartij != null)
+        {
+            _tweedeBevestiging = false;
+            _modus = Modus.PolitiekerBevestiging;
+        }
+    }
+
+    private void ToonTweedeBevestiging() => _tweedeBevestiging = true;
+
+    private async Task BevestigDefinitief()
+    {
+        if (_gekozenPartij == null) return;
+
+        _partijAnalyses = await Db.Analyses
+            .Include(a => a.Partij)
+            .Include(a => a.Beslissing)
+            .Where(a => a.PartijId == _gekozenPartij.Id)
+            .OrderByDescending(a => a.DatumAnalyse)
+            .ToListAsync();
+
+        _partijDocumenten = await Db.Documenten
+            .Where(d => d.PartijId == _gekozenPartij.Id && d.IsGeindexeerd)
+            .CountAsync();
+
+        _modus = Modus.Politieker;
+    }
+
+    private void NaarKeuze()
+    {
+        _modus = Modus.Keuze;
+        _gekozenPartij = null;
+        _tweedeBevestiging = false;
+    }
+
+    // ── Herbruikbare renderfragmenten ──
+
+    private RenderFragment RenderDashboardStatistieken() => __builder =>
+    {
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+        <MudText Typo="Typo.caption" Style="color: var(--gold-dim); letter-spacing: 2px;">PARTIJEN</MudText>
+                        <MudText Typo="Typo.h4" Class="stematiek-title">@_partijen.Count</MudText>
+                        <MudText Typo="Typo.body1">In den Catalogus</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                            @_partijen.Count(p => p.InRegering) in de regeering, @_partijen.Count(p => !p.InRegering) in de oppositie
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+        <MudText Typo="Typo.caption" Style="color: var(--gold-dim); letter-spacing: 2px;">DECRETEN</MudText>
+                        <MudText Typo="Typo.h4" Class="stematiek-title">@_aantalBeslissingen</MudText>
+                        <MudText Typo="Typo.body1">In het Logboeck</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                            @_aantalGeanalyseerd reeds door de machien geanalyseerd
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+        <MudText Typo="Typo.caption" Style="color: var(--gold-dim); letter-spacing: 2px;">PERKAMENTEN</MudText>
+                        <MudText Typo="Typo.h4" Class="stematiek-title">@_aantalDocumenten</MudText>
+                        <MudText Typo="Typo.body1">Geïndexeerd</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                            Partijprogramma's ende verkiezingsbeloften
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    };
+
+    private RenderFragment RenderRecenteAnalyses(List<Analyse> analyses) => __builder =>
+    {
+        if (analyses.Any())
+        {
+            <MudText Typo="Typo.h5" Class="stematiek-title mt-6 mb-3">Jongste Analyses der Machien</MudText>
+            foreach (var analyse in analyses)
+            {
+                <AnalyseCard
+                    PartijNaam="@analyse.Partij.Naam"
+                    PartijAfkorting="@analyse.Partij.Afkorting"
+                    PartijKleur="@analyse.Partij.Kleur"
+                    AnalyseScore="@analyse.OvereenkomstScore"
+                    Samenvatting="@analyse.Samenvatting"
+                    Commentaar="@analyse.Commentaar"
+                    Datum="@analyse.DatumAnalyse" />
+            }
+        }
+        else
+        {
+            <MudPaper Class="pa-6 mt-6 text-center">
+                <MudIcon Icon="@Icons.Material.Filled.Psychology" Size="Size.Large" Style="color: var(--koper);" />
+                <MudText Typo="Typo.h6" Class="stematiek-title mt-2">De Machien wacht op voedsel!</MudText>
+                <MudText Typo="Typo.body1" Class="mt-2">
+                    Voeg eerst partijprogramma's toe via <strong>De Gildekamers</strong>,
+                    dan beslissingen via <strong>Het Decretenlogboeck</strong>,
+                    en laet de Waerheydsmachien haer werk doen!
+                </MudText>
+            </MudPaper>
+        }
+    };
+}

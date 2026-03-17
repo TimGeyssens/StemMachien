@@ -1,0 +1,167 @@
+@page "/resultaten"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject AnalyseService AnalyseService
+@inject AiService AiService
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Stem-O-Matiek — Het Reekenboeck</PageTitle>
+
+<MudText Typo="Typo.h3" Class="stematiek-title mb-2">⚙ Het Reekenboeck ⚙</MudText>
+<MudText Typo="Typo.h6" Class="stematiek-subtitle mb-6">
+    Hier tekent gij op wat er wérkelijk geschiedde. De machien vergelijkt dit dan met de beloften.
+</MudText>
+
+@if (!AiService.IsConfigured)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+        De OpenAI sleutel is niet geconfigureerd — AI-commentaar zal niet beschikbaar zijn.
+    </MudAlert>
+}
+
+@if (_beslissingenMetResultaat.Any())
+{
+    <MudText Typo="Typo.h5" Class="stematiek-title mb-3">Reeds Afgerekend</MudText>
+
+    @foreach (var b in _beslissingenMetResultaat)
+    {
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">@b.Titel</MudText>
+                    <MudText Typo="Typo.caption" Style="color: var(--koper);">
+                        Beslissing: @b.Datum.ToString("dd MMM yyyy") — Resultaat ingevoerd: @b.Resultaat!.DatumIngevoerd.ToString("dd MMM yyyy")
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.subtitle2" Style="color: var(--goud);">Wat beloofd werd:</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">@b.Beschrijving</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.subtitle2" Style="color: var(--goud);">Wat er werkelijk geschiedde:</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">@b.Resultaat!.Beschrijving</MudText>
+                    </MudItem>
+                </MudGrid>
+
+                <BelofteBarometer Score="@b.Resultaat!.BelofteBarometerScore" Label="Belofte-Barometer"
+                                  Beschrijving="@GetBarometerBeschrijving(b.Resultaat!.BelofteBarometerScore)" />
+
+                @if (!string.IsNullOrEmpty(b.Resultaat.AiCommentaar))
+                {
+                    <div class="ai-commentaar mt-3">
+                        @b.Resultaat.AiCommentaar
+                    </div>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+}
+
+<MudText Typo="Typo.h5" Class="stematiek-title mt-6 mb-3">Resultaat Invoeren</MudText>
+
+<MudPaper Class="pa-4">
+    <MudSelect @bind-Value="_selectedBeslissingId" Label="Kies een decreet" Variant="Variant.Outlined" Class="mb-3">
+        @foreach (var b in _beslissingenZonderResultaat)
+        {
+            <MudSelectItem Value="@b.Id">@b.Titel (@b.Datum.ToString("dd MMM yyyy"))</MudSelectItem>
+        }
+    </MudSelect>
+
+    @if (_selectedBeslissing is not null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3">
+            <strong>Oorspronkelijke beschrijving:</strong> @_selectedBeslissing.Beschrijving
+        </MudAlert>
+    }
+
+    <MudTextField @bind-Value="_resultaatBeschrijving" Label="Wat is er werkelijk gebeurd?"
+                  Variant="Variant.Outlined" Lines="4" Class="mb-3" />
+
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="VoegResultaatToe"
+               Disabled="@(_selectedBeslissingId == 0 || string.IsNullOrWhiteSpace(_resultaatBeschrijving) || _isVerwerking)">
+        @if (_isVerwerking)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            <span>De machien rekent af...</span>
+        }
+        else
+        {
+            <span>Afrekenen!</span>
+        }
+    </MudButton>
+</MudPaper>
+
+@if (!_beslissingenZonderResultaat.Any() && !_beslissingenMetResultaat.Any())
+{
+    <MudPaper Class="pa-6 mt-4 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" Style="color: var(--koper);" />
+        <MudText Typo="Typo.h6" Class="stematiek-title mt-2">Nog geene decreten opgetekend!</MudText>
+        <MudText>Ga eerst naer <strong>Het Decretenlogboeck</strong> om beslissingen toe te voegen.</MudText>
+    </MudPaper>
+}
+
+@code {
+    private List<Beslissing> _beslissingenMetResultaat = new();
+    private List<Beslissing> _beslissingenZonderResultaat = new();
+    private int _selectedBeslissingId;
+    private Beslissing? _selectedBeslissing;
+    private string _resultaatBeschrijving = string.Empty;
+    private bool _isVerwerking;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LaadData();
+    }
+
+    private async Task LaadData()
+    {
+        _beslissingenMetResultaat = await Db.Beslissingen
+            .Include(b => b.Resultaat)
+            .Where(b => b.Resultaat != null)
+            .OrderByDescending(b => b.Resultaat!.DatumIngevoerd)
+            .ToListAsync();
+
+        _beslissingenZonderResultaat = await Db.Beslissingen
+            .Where(b => b.Resultaat == null)
+            .OrderByDescending(b => b.Datum)
+            .ToListAsync();
+    }
+
+    private async Task VoegResultaatToe()
+    {
+        if (_selectedBeslissingId == 0 || string.IsNullOrWhiteSpace(_resultaatBeschrijving)) return;
+
+        _isVerwerking = true;
+        StateHasChanged();
+
+        try
+        {
+            await AnalyseService.VoegResultaatToeAsync(_selectedBeslissingId, _resultaatBeschrijving);
+            Snackbar.Add("Het resultaat is opgetekend ende de machien heeft haer oordeel geveld!", Severity.Success);
+            _resultaatBeschrijving = string.Empty;
+            _selectedBeslissingId = 0;
+            await LaadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Dwaling: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isVerwerking = false;
+        }
+    }
+
+    private string GetBarometerBeschrijving(int score) => score switch
+    {
+        >= 90 => "Wonderbaarlijk! De belofte werd daadwerkelijk nagekomen!",
+        >= 70 => "Redelijk, al valt er nog wat op aen te merken.",
+        >= 50 => "Half werk, zoude men kunnen zeggen.",
+        >= 30 => "Meer beloofd dan gehouden, vreezen wij.",
+        _ => "De belofte is verdampt als dauw in de morgenzon."
+    };
+}
